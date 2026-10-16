@@ -62,6 +62,15 @@ export async function executeWriteFile(
     });
   }
 
+  try {
+    const lstat = fs.lstatSync(resolvedPath);
+    if (lstat.isSymbolicLink()) {
+      return JSON.stringify({
+        error: `Access denied: Writing to or overwriting symbolic links is prohibited for security. '${rawPath}' is a symbolic link.`,
+      });
+    }
+  } catch {}
+
   if (fs.existsSync(resolvedPath)) {
     const stats = fs.statSync(resolvedPath);
     if (stats.isDirectory()) {

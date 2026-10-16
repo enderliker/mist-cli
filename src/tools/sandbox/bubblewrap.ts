@@ -77,6 +77,12 @@ export function buildBubblewrapArgs(
     args.push("--share-net");
   }
 
+  args.push("--clearenv");
+  args.push("--setenv", "PATH", process.env.PATH || "/usr/bin:/bin");
+  args.push("--setenv", "HOME", workspaceDir);
+  args.push("--setenv", "TERM", "xterm-256color");
+  args.push("--setenv", "NODE_ENV", "test");
+
   args.push("--die-with-parent");
   args.push("--", "/bin/sh", "-c", command);
 

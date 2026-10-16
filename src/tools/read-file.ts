@@ -38,14 +38,64 @@ export const readFileToolDefinition: MistralTool = {
 };
 
 export function isPathInside(baseDir: string, targetPath: string): boolean {
-  const relative = path.relative(baseDir, targetPath);
-  return !relative.startsWith("..") && !path.isAbsolute(relative);
+  const resolvedBase = path.resolve(baseDir);
+  const resolvedTarget = path.resolve(resolvedBase, targetPath);
+
+  const lexicalRelative = path.relative(resolvedBase, resolvedTarget);
+  if (lexicalRelative.startsWith("..") || path.isAbsolute(lexicalRelative)) {
+    return false;
+  }
+
+  let realBase = resolvedBase;
+  try {
+    realBase = fs.realpathSync(resolvedBase);
+  } catch {}
+
+  try {
+    const realTarget = fs.realpathSync(resolvedTarget);
+    const realRelative = path.relative(realBase, realTarget);
+    return !realRelative.startsWith("..") && !path.isAbsolute(realRelative);
+  } catch (err: any) {
+    if (err && err.code === "ENOENT") {
+      let currentDir = path.dirname(resolvedTarget);
+      while (currentDir && currentDir !== path.dirname(currentDir)) {
+        try {
+          if (fs.existsSync(currentDir)) {
+            const realParent = fs.realpathSync(currentDir);
+            const parentRelative = path.relative(realBase, realParent);
+            if (parentRelative.startsWith("..") || path.isAbsolute(parentRelative)) {
+              return false;
+            }
+            break;
+          }
+        } catch {
+          return false;
+        }
+        currentDir = path.dirname(currentDir);
+      }
+      return true;
+    }
+    return false;
+  }
 }
 
-export function isSensitiveFile(filePath: string): boolean {
+export function isSensitiveFile(filePath: string, workspaceDir?: string): boolean {
   const base = path.basename(filePath).toLowerCase();
   if (base === ".env" || base.startsWith(".env.")) return true;
   if (base.endsWith(".pem") || base.endsWith(".key") || base.startsWith("id_rsa")) return true;
+
+  if (workspaceDir) {
+    try {
+      const resolved = path.resolve(workspaceDir, filePath);
+      if (fs.existsSync(resolved)) {
+        const real = fs.realpathSync(resolved);
+        const realBase = path.basename(real).toLowerCase();
+        if (realBase === ".env" || realBase.startsWith(".env.")) return true;
+        if (realBase.endsWith(".pem") || realBase.endsWith(".key") || realBase.startsWith("id_rsa")) return true;
+      }
+    } catch {}
+  }
+
   return false;
 }
 
@@ -76,7 +126,7 @@ export async function executeReadFile(
     });
   }
 
-  if (isSensitiveFile(rawPath)) {
+  if (isSensitiveFile(rawPath, resolvedBase)) {
     if (!onConfirmSensitive) {
       return JSON.stringify({
         error: `Access denied: '${rawPath}' is a sensitive file and requires explicit user confirmation.`,
