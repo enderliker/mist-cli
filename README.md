@@ -2,7 +2,7 @@
 
 Lightweight, interactive CLI for developers powered by **Codestral** (`codestral-latest`), Mistral AI's specialized code generation and reasoning model.
 
-Equipped with an autonomous agent and native function calling to inspect, read, and create files directly within your local workspace.
+Equipped with an autonomous agent and native function calling to inspect, read, create files, and safely execute commands directly within a native sandboxed environment.
 
 ---
 
@@ -16,16 +16,20 @@ Equipped with an autonomous agent and native function calling to inspect, read, 
   - `list_files`: Inspect workspace file trees and directory structures with automated exclusion of noise directories (`node_modules`, `.git`, `dist`).
   - `read_file`: Read entire files or specific line slices with a 100 KB safety limit.
   - `write_file`: Create or update project files with recursive directory creation.
+  - `execute_command`: Run shell commands and tests inside an isolated Linux namespace sandbox.
 - **Security & Guardrails**:
+  - **Native OS Sandboxing (Bubblewrap)**: Commands run in unprivileged Linux namespaces (`bwrap`) with read-only system mounts, isolated `/tmp`, network unshared by default, and strict containment to the workspace.
   - Path traversal protection restricting all operations to the workspace root.
-  - Interactive confirmation prompts before accessing sensitive files (`.env`, `.pem`, `.key`, `id_rsa*`).
-  - Automatic denial in non-TTY / CI environments to avoid secret leakage.
+  - Interactive confirmation prompts before accessing sensitive files (`.env`, `.pem`, `.key`, `id_rsa*`) or executing sandboxed commands.
+  - Automatic denial in non-TTY / CI environments to avoid secret leakage or unintended execution.
 - **One-Shot & REPL Modes**: Execute immediate single-turn commands or run an interactive session with conversation context.
 
 ---
 
 ## Requirements
 
+- **Operating System**: Linux (for Bubblewrap sandboxing) or any OS with Node.js.
+- **Bubblewrap**: `bwrap` (typically pre-installed on Linux, or via `sudo apt install bubblewrap`).
 - **Node.js**: v18.0.0 or higher (native ESM support).
 - **npm**: v9.0.0 or higher.
 - A Mistral AI API key ([console.mistral.ai](https://console.mistral.ai/)) or Codestral dedicated key ([codestral.mistral.ai](https://codestral.mistral.ai/)).
@@ -109,23 +113,21 @@ mistral-cli
 Example session:
 ```text
 ============================================================
-Mistral Codestral CLI (v0.1.0-beta.1)
+Mistral Codestral CLI (v0.2.0-beta.1)
 Active Model: codestral-latest
 Endpoint:     https://api.mistral.ai
 Workspace:    /home/user/project
 Type your prompt, or use /help, /clear, or /exit.
 ============================================================
 
-codestral> list the files in src/tools
-[Tool] Executing 'list_files' with arguments: { directory: 'src/tools' }
-[Tool] 'list_files' completed.
+codestral> run npm test in the sandbox
+⚠️  [Security] Codestral requests permission to execute sandboxed command 'npm test'. Authorize? (y/N): y
+[Tool] Executing 'execute_command' with arguments: { command: 'npm test' }
+[Tool] 'execute_command' completed.
 
-The directory contains:
-- index.ts
-- list-files.ts
-- read-file.ts
-- types.ts
-- write-file.ts
+The test suite ran successfully:
+- 8 test files passed
+- 58 tests passed
 
 codestral> can you read .env?
 ⚠️  [Security] Codestral requests permission to read sensitive file '.env'. Authorize? (y/N): y
@@ -164,7 +166,8 @@ Run unit tests with Vitest:
 npm test
 
 # Run a specific test suite
-npm test -- tests/read-file.test.ts
+npm test -- tests/execute-command.test.ts
+npm test -- tests/bubblewrap.test.ts
 ```
 
 ---
@@ -174,23 +177,28 @@ npm test -- tests/read-file.test.ts
 ```text
 mistral-cli/
 ├── src/
-│   ├── index.ts           # CLI binary entry point (#!/usr/bin/env node)
-│   ├── cli.ts             # Argument parser, One-Shot runner, and REPL
-│   ├── agent.ts           # Autonomous agent and tool calling loop
-│   ├── config.ts          # Credential and endpoint resolution
+│   ├── index.ts              # CLI binary entry point (#!/usr/bin/env node)
+│   ├── cli.ts                # Argument parser, One-Shot runner, and REPL
+│   ├── agent.ts              # Autonomous agent and tool calling loop
+│   ├── config.ts             # Credential and endpoint resolution
 │   └── tools/
-│       ├── types.ts       # Tool contracts and Mistral schema types
-│       ├── read-file.ts   # Safe file reading and sensitive file checks
-│       ├── list-files.ts  # Workspace directory explorer
-│       ├── write-file.ts  # File creation and updates
-│       └── index.ts       # Central tool registry and dispatcher
+│       ├── types.ts          # Tool contracts and Mistral schema types
+│       ├── read-file.ts      # Safe file reading and sensitive file checks
+│       ├── list-files.ts     # Workspace directory explorer
+│       ├── write-file.ts     # File creation and updates
+│       ├── execute-command.ts# Sandboxed command execution tool
+│       ├── sandbox/
+│       │   └── bubblewrap.ts # Linux namespace sandbox engine (bwrap)
+│       └── index.ts          # Central tool registry and dispatcher
 ├── tests/
-│   ├── config.test.ts     # Configuration tests
-│   ├── read-file.test.ts  # File reader and security tests
-│   ├── list-files.test.ts # Directory listing tests
-│   ├── write-file.test.ts # File writer tests
-│   ├── agent.test.ts      # Agent tool loop tests
-│   └── cli.test.ts        # CLI argument and REPL tests
+│   ├── config.test.ts        # Configuration tests
+│   ├── read-file.test.ts     # File reader and security tests
+│   ├── list-files.test.ts    # Directory listing tests
+│   ├── write-file.test.ts    # File writer tests
+│   ├── bubblewrap.test.ts    # Bubblewrap engine tests
+│   ├── execute-command.test.ts # Sandboxed command execution tests
+│   ├── agent.test.ts         # Agent tool loop tests
+│   └── cli.test.ts           # CLI argument and REPL tests
 ├── package.json
 ├── tsconfig.json
 └── README.md

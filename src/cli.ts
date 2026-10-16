@@ -3,7 +3,7 @@ import { stdin as input, stdout as output } from "node:process";
 import { CodestralAgent } from "./agent.js";
 import { resolveConfig, MistralCliConfig } from "./config.js";
 
-export const VERSION = "0.1.0-beta.1";
+export const VERSION = "0.2.0-beta.1";
 
 export interface ParsedArgs {
   help: boolean;

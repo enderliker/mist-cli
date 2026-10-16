@@ -35,6 +35,7 @@ You have access to local workspace tools:
 - 'list_files': explore directory contents and project structure.
 - 'read_file': examine file contents before answering or editing.
 - 'write_file': create or update files when asked to write code.
+- 'execute_command': run shell commands and tests safely inside a native sandboxed environment (Bubblewrap).
 Use tools proactively and safely. Respond accurately, concisely, and format your answers in Markdown.`;
 
 export const MAX_TOOL_ITERATIONS = 5;

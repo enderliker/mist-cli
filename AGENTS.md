@@ -25,11 +25,14 @@ src/
 ├── agent.ts        # CodestralAgent orchestrator and tool execution loop
 ├── config.ts       # Credential resolution (MISTRAL_API_KEY vs CODESTRAL_API_KEY)
 └── tools/
-    ├── types.ts    # Tool interfaces and Mistral schema definitions
-    ├── read-file.ts # File reader with path traversal & sensitive file checks
-    ├── list-files.ts# Workspace directory explorer
-    ├── write-file.ts# Safe file writer with parent directory creation
-    └── index.ts    # Tool registry and dispatcher
+    ├── types.ts          # Tool interfaces and Mistral schema definitions
+    ├── read-file.ts      # File reader with path traversal & sensitive file checks
+    ├── list-files.ts     # Workspace directory explorer
+    ├── write-file.ts     # Safe file writer with parent directory creation
+    ├── execute-command.ts# Sandboxed command execution tool
+    ├── sandbox/
+    │   └── bubblewrap.ts # Linux namespace sandbox engine (bwrap)
+    └── index.ts          # Tool registry and dispatcher
 ```
 
 ### Key Components
@@ -60,12 +63,19 @@ All modifications to tools and CLI interactions must adhere to these security re
    - Every file operation must resolve target paths against `workspaceDir` using `path.resolve()`.
    - Target paths must strictly begin with `workspaceDir`. Attempts to access files outside the workspace root must be rejected immediately.
 
-2. **Sensitive File Authorization**:
-   - Any read operation targeting sensitive files (`.env`, `*.pem`, `*.key`, `id_rsa*`) must trigger `onConfirmAction()`.
-   - In non-TTY environments (CI, piped stdin) or if user declines, access must be denied.
+2. **Native OS Sandboxing (Bubblewrap)**:
+   - Any shell command execution via `execute_command` must run strictly confined through Bubblewrap (`bwrap`).
+   - Read-only system paths (`/usr`, `/lib`, `/bin`), isolated `/tmp` (tmpfs), and `--unshare-all` namespace isolation.
+   - Network access is disabled by default unless explicitly granted with `allow_network: true`.
+   - Host files outside `workspaceDir` (e.g. `~/.ssh`, `/root`, other home folders) are completely inaccessible.
 
-3. **Context Safeguards**:
+3. **Sensitive File & Action Authorization**:
+   - Any read operation targeting sensitive files (`.env`, `*.pem`, `*.key`, `id_rsa*`) or any sandboxed command execution must trigger `onConfirmAction()`.
+   - In non-TTY environments (CI, piped stdin) or if user declines, access/execution must be denied.
+
+4. **Context Safeguards**:
    - File reading has an enforced size limit (100 KB) to prevent exhausting model token limits.
+   - Command output is capped at 50 KB to protect the conversation context.
    - Directory listing automatically ignores noisy directories (`node_modules`, `.git`, `dist`, `.gemini`).
 
 ---

@@ -1,7 +1,7 @@
 {
   "name": "mistral-cli",
-  "version": "0.1.0-beta.1",
-  "description": "CLI minimalista para interactuar con Codestral (Mistral AI) con soporte para lectura de archivos",
+  "version": "0.2.0-beta.1",
+  "description": "Minimalist developer CLI and agent for Codestral (Mistral AI) with sandboxed tool calling",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

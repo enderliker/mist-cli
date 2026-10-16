@@ -171,4 +171,58 @@ describe("CodestralAgent", () => {
     expect(reply).toContain("[Notice] Reached maximum consecutive tool call iterations (2).");
     expect(mockClient.chat.complete).toHaveBeenCalledTimes(2);
   });
+
+  it("handles execute_command tool call when model requests running a command", async () => {
+    const toolCallMock = {
+      id: "call_exec123",
+      type: "function",
+      function: {
+        name: "execute_command",
+        arguments: JSON.stringify({ command: "echo sandbox-agent-test" }),
+      },
+    };
+
+    const mockComplete = vi
+      .fn()
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              content: null,
+              toolCalls: [toolCallMock],
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              content: "Command ran successfully in sandbox.",
+              toolCalls: null,
+            },
+          },
+        ],
+      });
+
+    const mockClient = { chat: { complete: mockComplete } } as any;
+
+    const agent = new CodestralAgent({
+      client: mockClient,
+      config: dummyConfig,
+      workspaceDir: tempDir,
+      onConfirmAction: vi.fn().mockResolvedValue(true),
+    });
+
+    const reply = await agent.chat("Run test command");
+
+    expect(reply).toBe("Command ran successfully in sandbox.");
+    const history = agent.getHistory();
+    expect(history.length).toBe(5);
+    expect(history[3].role).toBe("tool");
+    expect(history[3].name).toBe("execute_command");
+    expect(history[3].content).toContain("sandbox-agent-test");
+  });
 });
