@@ -1,6 +1,3 @@
-/**
- * Definición genérica para una función compatible con Mistral Function Calling.
- */
 export interface FunctionDefinition {
   name: string;
   description: string;

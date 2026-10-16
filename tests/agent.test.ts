@@ -16,10 +16,10 @@ describe("CodestralAgent", () => {
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-test-"));
-    fs.writeFileSync(path.join(tempDir, "sample.txt"), "Contenido de prueba");
+    fs.writeFileSync(path.join(tempDir, "sample.txt"), "Test file content");
   });
 
-  it("inicializa el agente con prompt de sistema y permite reiniciar historial", () => {
+  it("initializes agent with system prompt and allows clearing history", () => {
     const mockClient = { chat: { complete: vi.fn() } } as any;
     const agent = new CodestralAgent({
       client: mockClient,
@@ -35,7 +35,7 @@ describe("CodestralAgent", () => {
     expect(agent.getHistory().length).toBe(1);
   });
 
-  it("responde directamente cuando el modelo no genera llamadas a herramientas", async () => {
+  it("responds directly when model triggers no tool calls", async () => {
     const mockClient = {
       chat: {
         complete: vi.fn().mockResolvedValue({
@@ -43,7 +43,7 @@ describe("CodestralAgent", () => {
             {
               message: {
                 role: "assistant",
-                content: "¡Hola! ¿En qué puedo ayudarte?",
+                content: "Hello! How can I help you?",
                 toolCalls: null,
               },
             },
@@ -58,16 +58,16 @@ describe("CodestralAgent", () => {
       workspaceDir: tempDir,
     });
 
-    const reply = await agent.chat("Hola");
+    const reply = await agent.chat("Hello");
 
-    expect(reply).toBe("¡Hola! ¿En qué puedo ayudarte?");
+    expect(reply).toBe("Hello! How can I help you?");
     const history = agent.getHistory();
-    expect(history.length).toBe(3); // system, user, assistant
-    expect(history[1].content).toBe("Hola");
-    expect(history[2].content).toBe("¡Hola! ¿En qué puedo ayudarte?");
+    expect(history.length).toBe(3);
+    expect(history[1].content).toBe("Hello");
+    expect(history[2].content).toBe("Hello! How can I help you?");
   });
 
-  it("ejecuta bucle de Function Calling cuando el modelo solicita leer un archivo", async () => {
+  it("executes Function Calling loop when model requests file reading", async () => {
     const toolCallMock = {
       id: "call_abc123",
       type: "function",
@@ -79,7 +79,6 @@ describe("CodestralAgent", () => {
 
     const mockComplete = vi
       .fn()
-      // Primera llamada: el modelo pide invocar read_file
       .mockResolvedValueOnce({
         choices: [
           {
@@ -91,13 +90,12 @@ describe("CodestralAgent", () => {
           },
         ],
       })
-      // Segunda llamada: el modelo recibe el resultado del tool y responde
       .mockResolvedValueOnce({
         choices: [
           {
             message: {
               role: "assistant",
-              content: "El archivo contiene: Contenido de prueba",
+              content: "The file contains: Test file content",
               toolCalls: null,
             },
           },
@@ -113,35 +111,29 @@ describe("CodestralAgent", () => {
       client: mockClient,
       config: dummyConfig,
       workspaceDir: tempDir,
-      onToolCall: (name, args) => toolCallsFired.push(name),
-      onToolResult: (name, res) => toolResultsFired.push(name),
+      onToolCall: (name) => toolCallsFired.push(name),
+      onToolResult: (name) => toolResultsFired.push(name),
     });
 
-    const reply = await agent.chat("¿Qué dice sample.txt?");
+    const reply = await agent.chat("What is inside sample.txt?");
 
-    expect(reply).toBe("El archivo contiene: Contenido de prueba");
+    expect(reply).toBe("The file contains: Test file content");
     expect(mockComplete).toHaveBeenCalledTimes(2);
     expect(toolCallsFired).toEqual(["read_file"]);
     expect(toolResultsFired).toEqual(["read_file"]);
 
     const history = agent.getHistory();
-    // Mensajes esperados:
-    // 0: system
-    // 1: user
-    // 2: assistant (con toolCalls)
-    // 3: tool (con toolCallId call_abc123 y resultado)
-    // 4: assistant (respuesta final)
     expect(history.length).toBe(5);
     expect(history[2].role).toBe("assistant");
     expect(history[2].toolCalls?.[0].id).toBe("call_abc123");
     expect(history[3].role).toBe("tool");
     expect(history[3].toolCallId).toBe("call_abc123");
-    expect(history[3].content).toContain("Contenido de prueba");
+    expect(history[3].content).toContain("Test file content");
     expect(history[4].role).toBe("assistant");
-    expect(history[4].content).toBe("El archivo contiene: Contenido de prueba");
+    expect(history[4].content).toBe("The file contains: Test file content");
   });
 
-  it("detiene el bucle de herramientas si excede maxIterations", async () => {
+  it("terminates tool loop when exceeding maxIterations", async () => {
     const loopToolCall = {
       id: "call_loop",
       type: "function",
@@ -151,7 +143,6 @@ describe("CodestralAgent", () => {
       },
     };
 
-    // Siempre devuelve tool calls
     const mockClient = {
       chat: {
         complete: vi.fn().mockResolvedValue({
@@ -177,7 +168,7 @@ describe("CodestralAgent", () => {
 
     const reply = await agent.chat("Loop");
 
-    expect(reply).toContain("Se alcanzó el número máximo");
+    expect(reply).toContain("[Notice] Reached maximum consecutive tool call iterations (2).");
     expect(mockClient.chat.complete).toHaveBeenCalledTimes(2);
   });
 });

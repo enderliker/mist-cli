@@ -5,18 +5,16 @@ import os from "node:os";
 import { executeListFiles, listFilesToolDefinition } from "../src/tools/list-files.js";
 import { executeTool, getAllToolDefinitions } from "../src/tools/index.js";
 
-describe("Tool: list_files (TDD)", () => {
+describe("Tool: list_files", () => {
   let tempDir: string;
 
   beforeAll(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "mistral-cli-list-test-"));
-    // Crear estructura de prueba
-    fs.writeFileSync(path.join(tempDir, "file1.txt"), "Hola");
+    fs.writeFileSync(path.join(tempDir, "file1.txt"), "Hello");
     fs.writeFileSync(path.join(tempDir, "file2.ts"), "const x = 1;");
     fs.mkdirSync(path.join(tempDir, "subfolder"));
-    fs.writeFileSync(path.join(tempDir, "subfolder", "nested.txt"), "Anidado");
+    fs.writeFileSync(path.join(tempDir, "subfolder", "nested.txt"), "Nested");
 
-    // Carpetas que deben ser ignoradas por defecto
     fs.mkdirSync(path.join(tempDir, "node_modules"));
     fs.writeFileSync(path.join(tempDir, "node_modules", "ignore.js"), "// ignore");
     fs.mkdirSync(path.join(tempDir, ".git"));
@@ -27,13 +25,13 @@ describe("Tool: list_files (TDD)", () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("define el esquema de tool para Mistral AI con nombre 'list_files'", () => {
+  it("registers tool definition with Mistral schema", () => {
     expect(listFilesToolDefinition.type).toBe("function");
     expect(listFilesToolDefinition.function.name).toBe("list_files");
     expect(listFilesToolDefinition.function.parameters).toBeDefined();
   });
 
-  it("lista los archivos del directorio raíz ignorando node_modules y .git", async () => {
+  it("lists workspace root entries ignoring node_modules and .git", async () => {
     const rawResult = await executeListFiles({ path: "." }, tempDir);
     const result = JSON.parse(rawResult);
 
@@ -48,7 +46,7 @@ describe("Tool: list_files (TDD)", () => {
     expect(names).not.toContain(".git");
   });
 
-  it("soporta listar subdirectorios específicos", async () => {
+  it("supports listing specific subdirectories", async () => {
     const rawResult = await executeListFiles({ path: "subfolder" }, tempDir);
     const result = JSON.parse(rawResult);
 
@@ -57,28 +55,28 @@ describe("Tool: list_files (TDD)", () => {
     expect(names).toContain("nested.txt");
   });
 
-  it("bloquea intentos de path traversal fuera del workspace", async () => {
+  it("blocks path traversal outside the workspace", async () => {
     const rawResult = await executeListFiles({ path: "../.." }, tempDir);
     const result = JSON.parse(rawResult);
 
-    expect(result.error).toMatch(/Acceso denegado.*fuera del espacio de trabajo/);
+    expect(result.error).toMatch(/Access denied.*outside the allowed workspace/i);
   });
 
-  it("devuelve error si la ruta no existe", async () => {
-    const rawResult = await executeListFiles({ path: "carpeta_inexistente" }, tempDir);
+  it("returns error if directory does not exist", async () => {
+    const rawResult = await executeListFiles({ path: "nonexistent_folder" }, tempDir);
     const result = JSON.parse(rawResult);
 
-    expect(result.error).toMatch(/no existe en el espacio de trabajo/);
+    expect(result.error).toMatch(/does not exist in the workspace/i);
   });
 
-  it("devuelve error si la ruta es un archivo en lugar de un directorio", async () => {
+  it("returns error if target is a file instead of a directory", async () => {
     const rawResult = await executeListFiles({ path: "file1.txt" }, tempDir);
     const result = JSON.parse(rawResult);
 
-    expect(result.error).toMatch(/es un archivo, no un directorio/);
+    expect(result.error).toMatch(/is a file, not a directory/i);
   });
 
-  it("está registrada en el tool registry global", async () => {
+  it("is registered in global tool registry", async () => {
     const tools = getAllToolDefinitions();
     const listTool = tools.find((t) => t.function.name === "list_files");
     expect(listTool).toBeDefined();

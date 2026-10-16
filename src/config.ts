@@ -1,7 +1,6 @@
 import { Mistral } from "@mistralai/mistralai";
 import dotenv from "dotenv";
 
-// Cargar variables de entorno desde .env si existe
 dotenv.config();
 
 export interface MistralCliConfig {
@@ -15,9 +14,9 @@ export const MISTRAL_API_ENDPOINT = "https://api.mistral.ai";
 export const CODESTRAL_API_ENDPOINT = "https://codestral.mistral.ai";
 
 /**
- * Resuelve la configuración de autenticación y endpoint para el CLI.
- * Detecta MISTRAL_API_KEY y CODESTRAL_API_KEY automáticamente,
- * permitiendo overrides con MISTRAL_BASE_URL y MISTRAL_MODEL.
+ * Resolves authentication and API endpoint configuration.
+ * Auto-detects MISTRAL_API_KEY and CODESTRAL_API_KEY,
+ * while allowing overrides via MISTRAL_BASE_URL and MISTRAL_MODEL.
  */
 export function resolveConfig(env: NodeJS.ProcessEnv = process.env): MistralCliConfig {
   const mistralKey = env.MISTRAL_API_KEY?.trim();
@@ -27,7 +26,7 @@ export function resolveConfig(env: NodeJS.ProcessEnv = process.env): MistralCliC
 
   if (!mistralKey && !codestralKey) {
     throw new Error(
-      "No se encontró ninguna API key válida. Por favor define MISTRAL_API_KEY o CODESTRAL_API_KEY en tu entorno o en un archivo .env."
+      "No valid API key found. Please define MISTRAL_API_KEY or CODESTRAL_API_KEY in your environment or in a .env file."
     );
   }
 
@@ -38,7 +37,6 @@ export function resolveConfig(env: NodeJS.ProcessEnv = process.env): MistralCliC
     apiKey = mistralKey;
     serverURL = customBaseUrl || MISTRAL_API_ENDPOINT;
   } else {
-    // Caso codestralKey exclusivamente
     apiKey = codestralKey!;
     serverURL = customBaseUrl || CODESTRAL_API_ENDPOINT;
   }
@@ -52,9 +50,6 @@ export function resolveConfig(env: NodeJS.ProcessEnv = process.env): MistralCliC
   };
 }
 
-/**
- * Inicializa el cliente oficial de Mistral con la configuración resuelta.
- */
 export function createMistralClient(config?: MistralCliConfig): Mistral {
   const resolved = config ?? resolveConfig();
   return new Mistral({

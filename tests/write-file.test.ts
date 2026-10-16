@@ -5,7 +5,7 @@ import os from "node:os";
 import { executeWriteFile, writeFileToolDefinition } from "../src/tools/write-file.js";
 import { executeTool, getAllToolDefinitions } from "../src/tools/index.js";
 
-describe("Tool: write_file (TDD)", () => {
+describe("Tool: write_file", () => {
   let tempDir: string;
 
   beforeAll(() => {
@@ -16,16 +16,16 @@ describe("Tool: write_file (TDD)", () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("define el esquema de tool para Mistral AI con nombre 'write_file'", () => {
+  it("registers tool definition with Mistral schema", () => {
     expect(writeFileToolDefinition.type).toBe("function");
     expect(writeFileToolDefinition.function.name).toBe("write_file");
     expect(writeFileToolDefinition.function.parameters.required).toContain("path");
     expect(writeFileToolDefinition.function.parameters.required).toContain("content");
   });
 
-  it("crea un nuevo archivo con el contenido especificado", async () => {
+  it("creates a new file with specified content", async () => {
     const rawResult = await executeWriteFile(
-      { path: "new-file.txt", content: "Hola desde Codestral!" },
+      { path: "new-file.txt", content: "Hello from Codestral!" },
       tempDir
     );
     const result = JSON.parse(rawResult);
@@ -34,10 +34,10 @@ describe("Tool: write_file (TDD)", () => {
     expect(result.success).toBe(true);
 
     const writtenContent = fs.readFileSync(path.join(tempDir, "new-file.txt"), "utf-8");
-    expect(writtenContent).toBe("Hola desde Codestral!");
+    expect(writtenContent).toBe("Hello from Codestral!");
   });
 
-  it("crea directorios intermedios si no existen", async () => {
+  it("creates intermediate directories if they do not exist", async () => {
     const rawResult = await executeWriteFile(
       { path: "src/utils/math.ts", content: "export const add = (a: number, b: number) => a + b;" },
       tempDir
@@ -48,7 +48,7 @@ describe("Tool: write_file (TDD)", () => {
     expect(fs.existsSync(path.join(tempDir, "src", "utils", "math.ts"))).toBe(true);
   });
 
-  it("sobrescribe un archivo existente cuando overwrite es true o por defecto", async () => {
+  it("overwrites an existing file when overwrite is true or default", async () => {
     await executeWriteFile({ path: "config.json", content: "{\"version\": 1}" }, tempDir);
     const rawResult = await executeWriteFile({ path: "config.json", content: "{\"version\": 2}" }, tempDir);
     const result = JSON.parse(rawResult);
@@ -58,48 +58,48 @@ describe("Tool: write_file (TDD)", () => {
     expect(updated).toBe("{\"version\": 2}");
   });
 
-  it("no sobrescribe si overwrite es false y el archivo ya existe", async () => {
+  it("does not overwrite if overwrite is false and file exists", async () => {
     await executeWriteFile({ path: "locked.txt", content: "Original" }, tempDir);
     const rawResult = await executeWriteFile(
-      { path: "locked.txt", content: "Modificado", overwrite: false },
+      { path: "locked.txt", content: "Modified", overwrite: false },
       tempDir
     );
     const result = JSON.parse(rawResult);
 
-    expect(result.error).toMatch(/ya existe.*overwrite=false/);
+    expect(result.error).toMatch(/already exists.*overwrite=false/i);
     const current = fs.readFileSync(path.join(tempDir, "locked.txt"), "utf-8");
     expect(current).toBe("Original");
   });
 
-  it("bloquea intentos de path traversal fuera del workspace", async () => {
+  it("blocks path traversal outside the workspace", async () => {
     const rawResult = await executeWriteFile(
-      { path: "../malicious.txt", content: "Ataque" },
+      { path: "../malicious.txt", content: "Attack" },
       tempDir
     );
     const result = JSON.parse(rawResult);
 
-    expect(result.error).toMatch(/Acceso denegado.*fuera del espacio de trabajo/);
+    expect(result.error).toMatch(/Access denied.*outside the allowed workspace/i);
   });
 
-  it("falla si la ruta es un directorio existente", async () => {
+  it("fails if target path is an existing directory", async () => {
     fs.mkdirSync(path.join(tempDir, "existing_dir"));
     const rawResult = await executeWriteFile(
-      { path: "existing_dir", content: "Texto" },
+      { path: "existing_dir", content: "Text" },
       tempDir
     );
     const result = JSON.parse(rawResult);
 
-    expect(result.error).toMatch(/es un directorio/);
+    expect(result.error).toMatch(/is an existing directory/i);
   });
 
-  it("está registrada en el tool registry global", async () => {
+  it("is registered in global tool registry", async () => {
     const tools = getAllToolDefinitions();
     const writeTool = tools.find((t) => t.function.name === "write_file");
     expect(writeTool).toBeDefined();
 
     const rawResult = await executeTool(
       "write_file",
-      { path: "via-registry.txt", content: "Prueba desde registry" },
+      { path: "via-registry.txt", content: "Test content from registry" },
       tempDir
     );
     const result = JSON.parse(rawResult);

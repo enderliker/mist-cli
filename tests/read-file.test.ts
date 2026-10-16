@@ -14,7 +14,7 @@ describe("Tool: read_file", () => {
     testFile = path.join(tempDir, "sample.txt");
     fs.writeFileSync(
       testFile,
-      "Línea 1: Hola Mundo\nLínea 2: Segunda línea\nLínea 3: Tercera línea\nLínea 4: Cuarta línea\nLínea 5: Fin"
+      "Line 1: Hello World\nLine 2: Second line\nLine 3: Third line\nLine 4: Fourth line\nLine 5: End"
     );
   });
 
@@ -22,7 +22,7 @@ describe("Tool: read_file", () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("verifica definiciones registradas de herramientas", () => {
+  it("registers tool definition with Mistral schema", () => {
     const tools = getAllToolDefinitions();
     expect(tools.length).toBeGreaterThan(0);
     const readTool = tools.find((t) => t.function.name === "read_file");
@@ -30,18 +30,18 @@ describe("Tool: read_file", () => {
     expect(readTool?.function.parameters).toHaveProperty("required");
   });
 
-  it("lee un archivo completo correctamente", async () => {
+  it("reads an entire file correctly", async () => {
     const rawResult = await executeReadFile({ path: "sample.txt" }, tempDir);
     const result = JSON.parse(rawResult);
 
     expect(result.file).toBe("sample.txt");
     expect(result.total_lines).toBe(5);
     expect(result.displayed_range).toEqual([1, 5]);
-    expect(result.content).toContain("Línea 1: Hola Mundo");
-    expect(result.content).toContain("Línea 5: Fin");
+    expect(result.content).toContain("Line 1: Hello World");
+    expect(result.content).toContain("Line 5: End");
   });
 
-  it("soporta lectura de un rango específico de líneas", async () => {
+  it("supports reading a specific line range", async () => {
     const rawResult = await executeReadFile(
       { path: "sample.txt", start_line: 2, end_line: 4 },
       tempDir
@@ -49,31 +49,31 @@ describe("Tool: read_file", () => {
     const result = JSON.parse(rawResult);
 
     expect(result.displayed_range).toEqual([2, 4]);
-    expect(result.content).toBe("Línea 2: Segunda línea\nLínea 3: Tercera línea\nLínea 4: Cuarta línea");
+    expect(result.content).toBe("Line 2: Second line\nLine 3: Third line\nLine 4: Fourth line");
   });
 
-  it("bloquea intentos de Path Traversal fuera del workspace", async () => {
+  it("blocks path traversal outside the workspace", async () => {
     const rawResult = await executeReadFile({ path: "../../etc/passwd" }, tempDir);
     const result = JSON.parse(rawResult);
 
-    expect(result.error).toMatch(/Acceso denegado.*fuera del espacio de trabajo/);
+    expect(result.error).toMatch(/Access denied.*outside the allowed workspace/i);
   });
 
-  it("devuelve un error claro si el archivo no existe", async () => {
-    const rawResult = await executeReadFile({ path: "no-existe.txt" }, tempDir);
+  it("returns a clear error if the file does not exist", async () => {
+    const rawResult = await executeReadFile({ path: "nonexistent.txt" }, tempDir);
     const result = JSON.parse(rawResult);
 
-    expect(result.error).toMatch(/no existe en el espacio de trabajo/);
+    expect(result.error).toMatch(/does not exist in the workspace/i);
   });
 
-  it("devuelve un error si la ruta es un directorio", async () => {
+  it("returns an error if the target is a directory", async () => {
     const rawResult = await executeReadFile({ path: "." }, tempDir);
     const result = JSON.parse(rawResult);
 
-    expect(result.error).toMatch(/es un directorio/);
+    expect(result.error).toMatch(/is a directory/i);
   });
 
-  it("detecta y advierte sobre archivos que superan el límite de tamaño sin rango de líneas", async () => {
+  it("warns about files exceeding size limit without a line range", async () => {
     const largeFile = path.join(tempDir, "large.txt");
     const largeContent = "A".repeat(MAX_FILE_SIZE_BYTES + 2048);
     fs.writeFileSync(largeFile, largeContent);
@@ -81,24 +81,24 @@ describe("Tool: read_file", () => {
     const rawResult = await executeReadFile({ path: "large.txt" }, tempDir);
     const result = JSON.parse(rawResult);
 
-    expect(result.error).toMatch(/demasiado grande/);
+    expect(result.error).toMatch(/too large/i);
   });
 
-  it("permite leer a través de executeTool en el registro", async () => {
+  it("allows reading through executeTool registry", async () => {
     const rawResult = await executeTool("read_file", { path: "sample.txt" }, tempDir);
     const result = JSON.parse(rawResult);
 
     expect(result.file).toBe("sample.txt");
   });
 
-  it("devuelve error si se invoca una herramienta inexistente", async () => {
+  it("returns error if unregistered tool is executed", async () => {
     const rawResult = await executeTool("invalid_tool", {}, tempDir);
     const result = JSON.parse(rawResult);
 
-    expect(result.error).toMatch(/no está registrada/);
+    expect(result.error).toMatch(/not registered/i);
   });
 
-  it("detecta archivos sensibles como .env, .pem, .key", async () => {
+  it("detects sensitive files such as .env, .pem, .key", async () => {
     const { isSensitiveFile } = await import("../src/tools/read-file.js");
     expect(isSensitiveFile(".env")).toBe(true);
     expect(isSensitiveFile(".env.local")).toBe(true);
@@ -109,15 +109,15 @@ describe("Tool: read_file", () => {
     expect(isSensitiveFile("src/index.ts")).toBe(false);
   });
 
-  it("bloquea por defecto la lectura de archivos sensibles si no hay confirmación", async () => {
+  it("blocks reading sensitive files by default when no confirmation handler exists", async () => {
     fs.writeFileSync(path.join(tempDir, ".env"), "SECRET=123");
     const rawResult = await executeReadFile({ path: ".env" }, tempDir);
     const result = JSON.parse(rawResult);
 
-    expect(result.error).toMatch(/archivo sensible.*requiere confirmación/i);
+    expect(result.error).toMatch(/sensitive file.*requires explicit user confirmation/i);
   });
 
-  it("permite leer archivo sensible si la confirmación es aprobada (true)", async () => {
+  it("allows reading sensitive file when confirmed by user", async () => {
     fs.writeFileSync(path.join(tempDir, ".env"), "SECRET=123");
     const rawResult = await executeReadFile(
       { path: ".env" },
@@ -129,7 +129,7 @@ describe("Tool: read_file", () => {
     expect(result.content).toBe("SECRET=123");
   });
 
-  it("cancela la lectura de archivo sensible si el usuario responde 'n' (false)", async () => {
+  it("cancels sensitive file read when user denies access", async () => {
     fs.writeFileSync(path.join(tempDir, ".env"), "SECRET=123");
     const rawResult = await executeReadFile(
       { path: ".env" },
@@ -138,6 +138,6 @@ describe("Tool: read_file", () => {
     );
     const result = JSON.parse(rawResult);
 
-    expect(result.error).toMatch(/el usuario denegó el acceso/i);
+    expect(result.error).toMatch(/user denied access/i);
   });
 });

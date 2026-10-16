@@ -3,52 +3,52 @@ import { parseArgs, runOneShot, VERSION } from "../src/cli.js";
 import { CodestralAgent } from "../src/agent.js";
 
 describe("CLI Argument Parsing", () => {
-  it("detecta flags de ayuda", () => {
+  it("detects help flags", () => {
     expect(parseArgs(["--help"]).help).toBe(true);
     expect(parseArgs(["-h"]).help).toBe(true);
   });
 
-  it("detecta flags de versión", () => {
+  it("detects version flags", () => {
     expect(parseArgs(["--version"]).version).toBe(true);
     expect(parseArgs(["-v"]).version).toBe(true);
     expect(VERSION).toBe("0.1.0-beta.1");
   });
 
-  it("parsea modelo y base-url personalizados", () => {
+  it("parses custom model and base-url", () => {
     const res = parseArgs([
       "-m",
       "codestral-2501",
       "-b",
       "https://custom.mistral.test/v1",
-      "Hola",
-      "mundo",
+      "Hello",
+      "world",
     ]);
 
     expect(res.model).toBe("codestral-2501");
     expect(res.baseUrl).toBe("https://custom.mistral.test/v1");
-    expect(res.prompt).toBe("Hola mundo");
+    expect(res.prompt).toBe("Hello world");
   });
 
-  it("combina argumentos posicionales como un prompt único", () => {
-    const res = parseArgs(["Explica", "el", "archivo", "index.ts"]);
-    expect(res.prompt).toBe("Explica el archivo index.ts");
+  it("joins positional arguments into a single prompt", () => {
+    const res = parseArgs(["Explain", "the", "file", "index.ts"]);
+    expect(res.prompt).toBe("Explain the file index.ts");
   });
 
-  it("ejecuta runOneShot exitosamente", async () => {
+  it("executes runOneShot successfully", async () => {
     const mockAgent = {
-      chat: vi.fn().mockResolvedValue("Explicación del archivo."),
+      chat: vi.fn().mockResolvedValue("Explanation of the file."),
       setConfirmAction: vi.fn(),
     } as unknown as CodestralAgent;
 
-    const exitCode = await runOneShot(mockAgent, "Explica index.ts");
+    const exitCode = await runOneShot(mockAgent, "Explain index.ts");
     expect(exitCode).toBe(0);
-    expect(mockAgent.chat).toHaveBeenCalledWith("Explica index.ts");
+    expect(mockAgent.chat).toHaveBeenCalledWith("Explain index.ts");
     expect(mockAgent.setConfirmAction).toHaveBeenCalled();
   });
 
-  it("maneja errores en runOneShot retornando código 1", async () => {
+  it("handles errors in runOneShot by returning exit code 1", async () => {
     const mockAgent = {
-      chat: vi.fn().mockRejectedValue(new Error("Fallo de red")),
+      chat: vi.fn().mockRejectedValue(new Error("Network failure")),
       setConfirmAction: vi.fn(),
     } as unknown as CodestralAgent;
 
@@ -56,7 +56,7 @@ describe("CLI Argument Parsing", () => {
     expect(exitCode).toBe(1);
   });
 
-  it("procesa comandos especiales del REPL correctamente", async () => {
+  it("processes special REPL commands correctly", async () => {
     const { handleReplCommand } = await import("../src/cli.js");
     const mockAgent = {
       clearHistory: vi.fn(),
@@ -73,6 +73,6 @@ describe("CLI Argument Parsing", () => {
     expect(mockAgent.getHistory).toHaveBeenCalled();
 
     expect(handleReplCommand("/help", mockAgent)).toBe("handled");
-    expect(handleReplCommand("¿Qué tal?", mockAgent)).toBe("continue");
+    expect(handleReplCommand("How are you?", mockAgent)).toBe("continue");
   });
 });

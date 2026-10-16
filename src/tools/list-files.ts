@@ -20,23 +20,20 @@ export const listFilesToolDefinition: MistralTool = {
   function: {
     name: "list_files",
     description:
-      "Lista archivos y carpetas dentro de un directorio del espacio de trabajo. Excluye automáticamente directorios de dependencias y control de versiones como node_modules y .git.",
+      "Lists files and directories in a workspace directory. Automatically excludes dependency and VCS directories like node_modules and .git.",
     parameters: {
       type: "object",
       properties: {
         path: {
           type: "string",
           description:
-            "Ruta relativa del directorio a explorar (por defecto '.' para la raíz del espacio de trabajo).",
+            "Relative directory path to explore (defaults to '.' for workspace root).",
         },
       },
     },
   },
 };
 
-/**
- * Ejecuta la lista de archivos dentro del workspace.
- */
 export async function executeListFiles(
   args: ListFilesArgs = {},
   workspaceDir: string = process.cwd()
@@ -45,23 +42,22 @@ export async function executeListFiles(
   const resolvedBase = path.resolve(workspaceDir);
   const resolvedPath = path.resolve(resolvedBase, rawPath);
 
-  // Verificación de seguridad contra Path Traversal
   if (!isPathInside(resolvedBase, resolvedPath)) {
     return JSON.stringify({
-      error: `Acceso denegado: La ruta '${rawPath}' se encuentra fuera del espacio de trabajo permitido.`,
+      error: `Access denied: Path '${rawPath}' is outside the allowed workspace.`,
     });
   }
 
   if (!fs.existsSync(resolvedPath)) {
     return JSON.stringify({
-      error: `El directorio '${rawPath}' no existe en el espacio de trabajo.`,
+      error: `Directory '${rawPath}' does not exist in the workspace.`,
     });
   }
 
   const stats = fs.statSync(resolvedPath);
   if (!stats.isDirectory()) {
     return JSON.stringify({
-      error: `'${rawPath}' es un archivo, no un directorio. Usa 'read_file' para ver su contenido.`,
+      error: `'${rawPath}' is a file, not a directory. Use 'read_file' to view its content.`,
     });
   }
 
@@ -74,7 +70,6 @@ export async function executeListFiles(
         type: entry.isDirectory() ? "directory" : "file",
       }))
       .sort((a, b) => {
-        // Mostrar directorios primero, luego archivos alfabéticamente
         if (a.type !== b.type) {
           return a.type === "directory" ? -1 : 1;
         }
@@ -89,7 +84,7 @@ export async function executeListFiles(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return JSON.stringify({
-      error: `Error al listar el directorio '${rawPath}': ${message}`,
+      error: `Error listing directory '${rawPath}': ${message}`,
     });
   }
 }

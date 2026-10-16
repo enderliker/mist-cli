@@ -13,9 +13,6 @@ export interface ParsedArgs {
   prompt?: string;
 }
 
-/**
- * Parsea los argumentos de línea de comandos simples.
- */
 export function parseArgs(args: string[]): ParsedArgs {
   let help = false;
   let version = false;
@@ -50,29 +47,29 @@ export function parseArgs(args: string[]): ParsedArgs {
 export function printHelp(): void {
   console.log(`
 Mistral CLI (Codestral) - v${VERSION}
-Uso:
-  mistral-cli [opciones] [prompt]
+Usage:
+  mistral-cli [options] [prompt]
 
-Opciones:
-  -h, --help            Muestra este mensaje de ayuda
-  -v, --version         Muestra la versión instalada
-  -m, --model <modelo>  Sobrescribe el modelo (por defecto: codestral-latest)
-  -b, --base-url <url>  Sobrescribe la URL base de la API de Mistral
+Options:
+  -h, --help            Show this help message
+  -v, --version         Show installed version
+  -m, --model <model>   Override model name (default: codestral-latest)
+  -b, --base-url <url>  Override API base URL
 
-Modos de uso:
-  1. Modo One-Shot:
-     mistral-cli "¿Qué funciones exporta src/config.ts?"
-     mistral-cli -m codestral-2501 "Explica el contenido de package.json"
+Modes:
+  1. One-Shot Mode:
+     mistral-cli "What functions are exported in src/config.ts?"
+     mistral-cli -m codestral-2501 "Explain package.json"
 
-  2. Modo Interactivo (REPL):
+  2. Interactive REPL Mode:
      mistral-cli
-     (Inicia una sesión interactiva con memoria de conversación)
+     (Starts an interactive session with conversation memory)
 
-Comandos en REPL:
-  /help       Muestra la lista de comandos disponibles
-  /clear      Reinicia el historial de la conversación
-  /history    Muestra la cantidad de mensajes en el historial
-  /exit       Sale de la sesión interactiva
+REPL Commands:
+  /help       Show available commands
+  /clear      Reset conversation history
+  /history    Show number of messages in memory
+  /exit       Exit the interactive session
 `);
 }
 
@@ -80,7 +77,7 @@ export function createPromptConfirmation(rl?: readline.Interface) {
   return async (description: string): Promise<boolean> => {
     if (!process.stdin.isTTY) {
       console.log(
-        `\x1b[33m[Seguridad]\x1b[0m Denegado automáticamente: '${description}' (entorno no-TTY).`
+        `\x1b[33m[Security]\x1b[0m Automatically denied: '${description}' (non-TTY environment).`
       );
       return false;
     }
@@ -88,10 +85,10 @@ export function createPromptConfirmation(rl?: readline.Interface) {
     const reader = rl ?? readline.createInterface({ input, output });
     try {
       const answer = await reader.question(
-        `\n\x1b[33m⚠️  [Seguridad] Codestral solicita ${description}. ¿Autorizar? (s/N):\x1b[0m `
+        `\n\x1b[33m⚠️  [Security] Codestral requests permission to ${description}. Authorize? (y/N):\x1b[0m `
       );
       const trimmed = answer.trim().toLowerCase();
-      return trimmed === "s" || trimmed === "si" || trimmed === "y" || trimmed === "yes";
+      return trimmed === "y" || trimmed === "yes" || trimmed === "s" || trimmed === "si";
     } finally {
       if (!rl) {
         reader.close();
@@ -100,9 +97,6 @@ export function createPromptConfirmation(rl?: readline.Interface) {
   };
 }
 
-/**
- * Ejecuta una consulta única en modo One-Shot.
- */
 export async function runOneShot(agent: CodestralAgent, prompt: string): Promise<number> {
   agent.setConfirmAction?.(createPromptConfirmation());
   try {
@@ -116,9 +110,6 @@ export async function runOneShot(agent: CodestralAgent, prompt: string): Promise
   }
 }
 
-/**
- * Maneja comandos especiales dentro del REPL (/exit, /clear, /history, /help).
- */
 export function handleReplCommand(
   cmd: string,
   agent: CodestralAgent
@@ -126,34 +117,31 @@ export function handleReplCommand(
   switch (cmd) {
     case "/exit":
     case "/quit":
-      console.log("¡Hasta luego!");
+      console.log("Goodbye!");
       return "exit";
     case "/clear":
       agent.clearHistory();
-      console.log("\x1b[33mHistorial de conversación reiniciado.\x1b[0m\n");
+      console.log("\x1b[33mConversation history reset.\x1b[0m\n");
       return "handled";
     case "/history":
-      console.log(`\x1b[34mTotal de mensajes en memoria: ${agent.getHistory().length}\x1b[0m\n`);
+      console.log(`\x1b[34mTotal messages in memory: ${agent.getHistory().length}\x1b[0m\n`);
       return "handled";
     case "/help":
-      console.log(`\nComandos disponibles:\n  /help     - Muestra este menú de ayuda\n  /clear    - Limpia la memoria y reinicia el contexto\n  /history  - Muestra la cantidad de mensajes actuales\n  /exit     - Cierra el CLI\n`);
+      console.log(`\nAvailable commands:\n  /help     - Show this help menu\n  /clear    - Clear conversation memory\n  /history  - Show message count\n  /exit     - Exit CLI\n`);
       return "handled";
     default:
       return "continue";
   }
 }
 
-/**
- * Inicia el modo interactivo REPL con historial y soporte para herramientas locales.
- */
 export async function runRepl(agent: CodestralAgent): Promise<void> {
   const config = agent.getConfig();
   console.log("\x1b[32m" + "=".repeat(60) + "\x1b[0m");
   console.log(`\x1b[1mMistral Codestral CLI\x1b[0m (v${VERSION})`);
-  console.log(`Modelo activo: \x1b[33m${config.model}\x1b[0m`);
-  console.log(`Endpoint:      \x1b[34m${config.serverURL}\x1b[0m`);
-  console.log(`Espacio de trabajo: ${process.cwd()}`);
-  console.log("Escribe tu consulta o usa \x1b[36m/help\x1b[0m, \x1b[36m/clear\x1b[0m o \x1b[36m/exit\x1b[0m.");
+  console.log(`Model:     \x1b[33m${config.model}\x1b[0m`);
+  console.log(`Endpoint:  \x1b[34m${config.serverURL}\x1b[0m`);
+  console.log(`Workspace: ${process.cwd()}`);
+  console.log("Type your prompt or use \x1b[36m/help\x1b[0m, \x1b[36m/clear\x1b[0m, or \x1b[36m/exit\x1b[0m.");
   console.log("\x1b[32m" + "=".repeat(60) + "\x1b[0m\n");
 
   const rl = readline.createInterface({ input, output });
@@ -183,9 +171,6 @@ export async function runRepl(agent: CodestralAgent): Promise<void> {
   }
 }
 
-/**
- * Punto de entrada principal para el CLI.
- */
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const parsed = parseArgs(argv);
 
@@ -206,21 +191,20 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     if (parsed.baseUrl) config.serverURL = parsed.baseUrl;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`\x1b[31mError de configuración:\x1b[0m ${message}`);
-    console.error("\nPuede definirla temporalmente ejecutando:");
-    console.error("  export MISTRAL_API_KEY=\"tu_api_key\"");
-    console.error("  o crear un archivo .env en este directorio.");
+    console.error(`\x1b[31mConfiguration error:\x1b[0m ${message}`);
+    console.error("\nYou can define it by running:");
+    console.error("  export MISTRAL_API_KEY=\"your_api_key\"");
+    console.error("  or by creating a .env file in this directory.");
     return 1;
   }
 
   const agent = new CodestralAgent({
     config,
     onToolCall: (name, args) => {
-      console.log(`\x1b[36m[Herramienta]\x1b[0m Ejecutando '${name}' con parámetros:`, args);
+      console.log(`\x1b[36m[Tool]\x1b[0m Running '${name}' with arguments:`, args);
     },
     onToolResult: (name, result) => {
-      const summary = result.length > 150 ? result.slice(0, 150) + "..." : result;
-      console.log(`\x1b[32m[Herramienta]\x1b[0m '${name}' completada.`);
+      console.log(`\x1b[32m[Tool]\x1b[0m '${name}' completed.`);
     },
   });
 

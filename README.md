@@ -1,184 +1,196 @@
-# Mistral Codestral CLI (Beta 0.1)
+# Mistral Codestral CLI
 
-CLI ligero e interactivo para desarrolladores potenciado por **Codestral** (`codestral-latest`), el modelo de Mistral AI especializado en generación y análisis de código.
+Lightweight, interactive CLI for developers powered by **Codestral** (`codestral-latest`), Mistral AI's specialized code generation and reasoning model.
 
-Esta versión **Beta 0.1** implementa un agente autónomo con **Function Calling** nativo que puede inspeccionar y leer archivos locales de tu proyecto de forma segura.
-
----
-
-## ✨ Características de la Beta 0.1
-
-- 🧠 **Potenciado por Codestral**: Utiliza por defecto `codestral-latest` con soporte nativo de llamadas a funciones.
-- 🔑 **Autenticación Dual Automática**:
-  - `MISTRAL_API_KEY`: Se conecta automáticamente a `https://api.mistral.ai`.
-  - `CODESTRAL_API_KEY`: Se conecta automáticamente a `https://codestral.mistral.ai`.
-- 🔍 **Herramienta `read_file` Integrada**: Codestral decide autónomamente cuándo leer archivos del workspace para responder preguntas sobre código, dependencias o arquitectura.
-- 🛡️ **Seguridad contra Path Traversal**: Protege el sistema restringiendo las lecturas al directorio de trabajo actual y limitando el tamaño máximo de archivo para cuidar el contexto.
-- 💬 **Modo One-Shot y REPL**: Úsalo para consultas rápidas de un comando o entra en una sesión interactiva continua con memoria contextual.
+Equipped with an autonomous agent and native function calling to inspect, read, and create files directly within your local workspace.
 
 ---
 
-## 🚀 Requisitos
+## Features
 
-- **Node.js**: v18.0.0 o superior (compatible con ES Modules nativos).
-- **NPM**: v9.0.0 o superior.
-- Una API Key de Mistral AI ([console.mistral.ai](https://console.mistral.ai/)) o Codestral ([codestral.mistral.ai](https://codestral.mistral.ai/)).
+- **Codestral Native Tool Calling**: Powered by `codestral-latest` with autonomous multi-step reasoning.
+- **Dual Endpoint Auto-Resolution**:
+  - `MISTRAL_API_KEY` connects to `https://api.mistral.ai`.
+  - `CODESTRAL_API_KEY` connects to `https://codestral.mistral.ai`.
+- **Local Workspace Tools**:
+  - `list_files`: Inspect workspace file trees and directory structures with automated exclusion of noise directories (`node_modules`, `.git`, `dist`).
+  - `read_file`: Read entire files or specific line slices with a 100 KB safety limit.
+  - `write_file`: Create or update project files with recursive directory creation.
+- **Security & Guardrails**:
+  - Path traversal protection restricting all operations to the workspace root.
+  - Interactive confirmation prompts before accessing sensitive files (`.env`, `.pem`, `.key`, `id_rsa*`).
+  - Automatic denial in non-TTY / CI environments to avoid secret leakage.
+- **One-Shot & REPL Modes**: Execute immediate single-turn commands or run an interactive session with conversation context.
 
 ---
 
-## 📦 Instalación y Compilación
+## Requirements
 
-1. Clona el repositorio e instala las dependencias:
+- **Node.js**: v18.0.0 or higher (native ESM support).
+- **npm**: v9.0.0 or higher.
+- A Mistral AI API key ([console.mistral.ai](https://console.mistral.ai/)) or Codestral dedicated key ([codestral.mistral.ai](https://codestral.mistral.ai/)).
+
+---
+
+## Installation & Setup
+
+1. Clone repository and install dependencies:
    ```bash
    git clone <repo-url>
    cd mistral-cli
    npm install
    ```
 
-2. Compila el código TypeScript a JavaScript ESM:
+2. Build TypeScript to JavaScript ESM:
    ```bash
    npm run build
    ```
 
-3. (Opcional) Enlaza el comando globalmente en tu terminal:
+3. (Optional) Link binary globally:
    ```bash
    npm link
-   # Ahora puedes ejecutarlo desde cualquier proyecto usando:
+   # mistral-cli is now globally accessible
    mistral-cli --help
    ```
 
 ---
 
-## ⚙️ Configuración de Credenciales
+## Configuration
 
-Crea un archivo `.env` en la raíz del proyecto (o en la carpeta desde donde ejecutes el CLI) basándote en `.env.example`:
+Create a `.env` file in the project root or working directory:
 
 ```bash
 cp .env.example .env
 ```
 
-Edita `.env` con tu clave:
+Configure your preferred API key:
 
 ```env
-# Opción A: Clave estándar de La Plateforme (Mistral Studio)
-MISTRAL_API_KEY=tu_api_key_de_mistral
+# Standard Mistral AI key
+MISTRAL_API_KEY=your_mistral_api_key
 
-# Opción B: Clave dedicada de Codestral
-# CODESTRAL_API_KEY=tu_api_key_de_codestral
+# Or dedicated Codestral key
+# CODESTRAL_API_KEY=your_codestral_api_key
+
+# Optional overrides
+# MISTRAL_MODEL=codestral-latest
+# MISTRAL_BASE_URL=https://api.mistral.ai
 ```
 
-También puedes exportarla directamente en tu terminal:
+You can also export the environment variable directly:
 ```bash
-export MISTRAL_API_KEY="tu_api_key"
+export MISTRAL_API_KEY="your_api_key"
 ```
 
 ---
 
-## 💡 Ejemplos de Uso
+## Usage
 
-### 1. Modo One-Shot (Consulta directa)
+### 1. One-Shot Mode
 
-Pide a Codestral que examine un archivo y te explique su funcionamiento o dependencias:
+Pass a query directly as command-line arguments:
 
 ```bash
-mistral-cli "¿Qué dependencias y scripts están configurados en package.json?"
+mistral-cli "What scripts and dependencies are defined in package.json?"
 ```
 
 ```bash
-mistral-cli "¿Qué hace la función resolveConfig en src/config.ts?"
+mistral-cli -m codestral-2501 "Explain how authentication is resolved in src/config.ts"
 ```
 
-Especificando un modelo o base URL diferente:
-```bash
-mistral-cli -m codestral-2501 "Explica el diseño de tipos en src/tools/types.ts"
-```
+### 2. Interactive REPL Mode
 
-### 2. Modo Interactivo (REPL)
-
-Inicia una sesión interactiva ejecutando el comando sin argumentos:
+Launch the REPL without arguments:
 
 ```bash
 mistral-cli
 ```
 
-En el prompt interactivo puedes conversar continuamente con Codestral mientras mantiene el contexto de los archivos analizados:
-
+Example session:
 ```text
 ============================================================
 Mistral Codestral CLI (v0.1.0-beta.1)
-Modelo activo: codestral-latest
-Endpoint:      https://api.mistral.ai
-Espacio de trabajo: /home/ender/mistral-cli
-Escribe tu consulta o usa /help, /clear o /exit.
+Active Model: codestral-latest
+Endpoint:     https://api.mistral.ai
+Workspace:    /home/user/project
+Type your prompt, or use /help, /clear, or /exit.
 ============================================================
 
-codestral> Lee el archivo src/tools/read-file.ts y dime qué validaciones de seguridad tiene.
-[Herramienta] Ejecutando 'read_file' con parámetros: { path: 'src/tools/read-file.ts' }
-[Herramienta] 'read_file' completada.
+codestral> list the files in src/tools
+[Tool] Executing 'list_files' with arguments: { directory: 'src/tools' }
+[Tool] 'list_files' completed.
 
-El archivo 'src/tools/read-file.ts' implementa las siguientes validaciones:
-1. Protección contra Path Traversal...
-2. Comprobación de existencia y tipo de archivo...
-3. Límite de tamaño máximo (100 KB)...
+The directory contains:
+- index.ts
+- list-files.ts
+- read-file.ts
+- types.ts
+- write-file.ts
+
+codestral> can you read .env?
+⚠️  [Security] Codestral requests permission to read sensitive file '.env'. Authorize? (y/N): y
+[Tool] Executing 'read_file' with arguments: { path: '.env' }
+[Tool] 'read_file' completed.
 
 codestral> /history
-Total de mensajes en memoria: 5
+Total messages in history: 5
 
 codestral> /clear
-Historial de conversación reiniciado.
+Conversation history cleared.
 
 codestral> /exit
-¡Hasta luego!
+Goodbye!
 ```
 
 ---
 
-## 🛠️ Comandos en Modo REPL
+## REPL Commands
 
-| Comando | Descripción |
+| Command | Action |
 |---|---|
-| `/help` | Muestra la ayuda de comandos del REPL |
-| `/clear` | Reinicia la memoria de conversación (mantiene el prompt de sistema) |
-| `/history` | Muestra la cantidad de mensajes acumulados en el historial |
-| `/exit` o `/quit` | Termina la sesión interactiva |
+| `/help` | Display interactive command overview |
+| `/clear` | Reset chat history (retains system prompt) |
+| `/history` | Print the number of messages in memory |
+| `/exit` or `/quit` | Terminate session |
 
 ---
 
-## 🧪 Pruebas Unitarias
+## Development & Testing
 
-El proyecto cuenta con una suite completa de pruebas unitarias usando `vitest`:
+Run unit tests with Vitest:
 
 ```bash
-# Ejecutar todas las pruebas
+# Run all tests
 npm test
 
-# Ejecutar una suite específica
+# Run a specific test suite
 npm test -- tests/read-file.test.ts
 ```
 
 ---
 
-## 📁 Estructura del Proyecto
+## Project Structure
 
 ```text
 mistral-cli/
 ├── src/
-│   ├── index.ts           # Binario ejecutable con shebang #!/usr/bin/env node
-│   ├── cli.ts             # Parser de argumentos CLI, modo One-Shot y REPL
-│   ├── agent.ts           # CodestralAgent y bucle de Function Calling
-│   ├── config.ts          # Resolución dual de credenciales y endpoints
+│   ├── index.ts           # CLI binary entry point (#!/usr/bin/env node)
+│   ├── cli.ts             # Argument parser, One-Shot runner, and REPL
+│   ├── agent.ts           # Autonomous agent and tool calling loop
+│   ├── config.ts          # Credential and endpoint resolution
 │   └── tools/
-│       ├── types.ts       # Interfaces para herramientas y esquemas Mistral
-│       ├── read-file.ts   # Implementación segura de la tool read_file
-│       └── index.ts       # Registro central de herramientas disponibles
+│       ├── types.ts       # Tool contracts and Mistral schema types
+│       ├── read-file.ts   # Safe file reading and sensitive file checks
+│       ├── list-files.ts  # Workspace directory explorer
+│       ├── write-file.ts  # File creation and updates
+│       └── index.ts       # Central tool registry and dispatcher
 ├── tests/
-│   ├── config.test.ts     # Pruebas de resolución de configuración
-│   ├── read-file.test.ts  # Pruebas de lectura segura y path traversal
-│   ├── agent.test.ts      # Pruebas de bucle de herramientas y mocks
-│   └── cli.test.ts        # Pruebas de argumentos de línea de comandos
-├── tasks/
-│   ├── plan.md            # Plan de implementación
-│   └── todo.md            # Registro de tareas y checkpoints
+│   ├── config.test.ts     # Configuration tests
+│   ├── read-file.test.ts  # File reader and security tests
+│   ├── list-files.test.ts # Directory listing tests
+│   ├── write-file.test.ts # File writer tests
+│   ├── agent.test.ts      # Agent tool loop tests
+│   └── cli.test.ts        # CLI argument and REPL tests
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -186,15 +198,6 @@ mistral-cli/
 
 ---
 
-## 🗺️ Próximas Características (Roadmap Beta 0.2+)
-
-- [ ] Herramienta `list_files` para explorar el árbol de directorios del proyecto.
-- [ ] Herramienta `write_file` / `edit_file` con confirmación interactiva para aplicar cambios en código.
-- [ ] Streaming de respuestas token a token (`chat.stream`).
-- [ ] Soporte para comandos con prefijo `@` para adjuntar contexto manual.
-
----
-
-## 📄 Licencia
+## License
 
 MIT

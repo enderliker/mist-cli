@@ -30,18 +30,15 @@ export interface AgentOptions {
   onConfirmAction?: (description: string) => Promise<boolean> | boolean;
 }
 
-export const DEFAULT_SYSTEM_PROMPT = `Eres un asistente de programación y análisis de código potenciado por Codestral (Mistral AI).
-Tienes acceso a herramientas locales para interactuar con el espacio de trabajo del usuario:
-- 'list_files': para explorar el contenido de carpetas y descubrir la estructura del proyecto.
-- 'read_file': para examinar el contenido de archivos antes de responder o modificarlos.
-- 'write_file': para crear o modificar archivos cuando el usuario te pida escribir o actualizar código.
-Usa las herramientas de forma proactiva y segura. Responde de manera precisa, concisa y útil en formato Markdown.`;
+export const DEFAULT_SYSTEM_PROMPT = `You are a coding and software engineering assistant powered by Codestral (Mistral AI).
+You have access to local workspace tools:
+- 'list_files': explore directory contents and project structure.
+- 'read_file': examine file contents before answering or editing.
+- 'write_file': create or update files when asked to write code.
+Use tools proactively and safely. Respond accurately, concisely, and format your answers in Markdown.`;
 
 export const MAX_TOOL_ITERATIONS = 5;
 
-/**
- * Normaliza el contenido de un mensaje que puede ser string, array de chunks o nulo.
- */
 export function extractTextContent(content: unknown): string | null {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
@@ -52,9 +49,6 @@ export function extractTextContent(content: unknown): string | null {
   return content == null ? null : String(content);
 }
 
-/**
- * Parsea con seguridad los argumentos JSON enviados por el modelo para una herramienta.
- */
 export function parseToolArguments(rawArgs: unknown): Record<string, unknown> {
   if (typeof rawArgs !== "string") {
     return rawArgs && typeof rawArgs === "object" ? (rawArgs as Record<string, unknown>) : {};
@@ -90,9 +84,6 @@ export class CodestralAgent {
     this.clearHistory();
   }
 
-  /**
-   * Reinicia el historial conservando únicamente el prompt del sistema.
-   */
   public clearHistory(): void {
     this.messages = [
       {
@@ -102,32 +93,20 @@ export class CodestralAgent {
     ];
   }
 
-  /**
-   * Devuelve una copia del historial de mensajes actual.
-   */
   public getHistory(): ChatMessage[] {
     return [...this.messages];
   }
 
-  /**
-   * Obtiene la configuración activa del agente.
-   */
   public getConfig(): MistralCliConfig {
     return { ...this.config };
   }
 
-  /**
-   * Configura o actualiza el manejador de confirmación para acciones sensibles.
-   */
   public setConfirmAction(
     callback?: (description: string) => Promise<boolean> | boolean
   ): void {
     this.onConfirmAction = callback;
   }
 
-  /**
-   * Envía un mensaje de usuario y procesa el bucle de Function Calling si el modelo solicita tools.
-   */
   public async chat(userInput: string): Promise<string> {
     this.messages.push({
       role: "user",
@@ -140,7 +119,6 @@ export class CodestralAgent {
     while (iteration < this.maxIterations) {
       iteration++;
 
-      // Llamada al endpoint chat.complete de Mistral
       const response = await this.client.chat.complete({
         model: this.config.model,
         messages: this.messages as any,
@@ -150,13 +128,12 @@ export class CodestralAgent {
 
       const choice = response.choices?.[0];
       if (!choice || !choice.message) {
-        throw new Error("No se recibió ninguna respuesta válida del modelo Mistral.");
+        throw new Error("No valid response received from Mistral model.");
       }
 
       const assistantMsg = choice.message;
       const toolCalls = assistantMsg.toolCalls;
 
-      // Si el modelo decide ejecutar una o varias herramientas
       if (toolCalls && toolCalls.length > 0) {
         this.messages.push({
           role: "assistant",
@@ -201,11 +178,9 @@ export class CodestralAgent {
           });
         }
 
-        // Continúa la siguiente iteración enviando los resultados de las herramientas a Codestral
         continue;
       }
 
-      // Si no hay toolCalls, es la respuesta final de texto para el usuario
       const finalContent = extractTextContent(assistantMsg.content) ?? "";
 
       this.messages.push({
@@ -216,7 +191,7 @@ export class CodestralAgent {
       return finalContent;
     }
 
-    const warning = `[Aviso] Se alcanzó el número máximo de llamadas consecutivas a herramientas (${this.maxIterations}).`;
+    const warning = `[Notice] Reached maximum consecutive tool call iterations (${this.maxIterations}).`;
     this.messages.push({
       role: "assistant",
       content: warning,

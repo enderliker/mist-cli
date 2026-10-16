@@ -8,28 +8,28 @@ export interface ReadFileArgs {
   end_line?: number;
 }
 
-export const MAX_FILE_SIZE_BYTES = 100 * 1024; // 100 KB
+export const MAX_FILE_SIZE_BYTES = 100 * 1024; // 100 KB limit for context safety
 
 export const readFileToolDefinition: MistralTool = {
   type: "function",
   function: {
     name: "read_file",
     description:
-      "Lee el contenido de un archivo de texto en el espacio de trabajo. Soporta lectura completa o por rangos de líneas.",
+      "Reads the content of a text file in the workspace. Supports reading full files or specific line ranges.",
     parameters: {
       type: "object",
       properties: {
         path: {
           type: "string",
-          description: "Ruta relativa del archivo a leer dentro del espacio de trabajo.",
+          description: "Relative path of the file to read within the workspace.",
         },
         start_line: {
           type: "integer",
-          description: "Número de línea inicial (1-indexed, opcional).",
+          description: "Starting line number (1-indexed, optional).",
         },
         end_line: {
           type: "integer",
-          description: "Número de línea final (1-indexed, opcional).",
+          description: "Ending line number (1-indexed, optional).",
         },
       },
       required: ["path"],
@@ -37,17 +37,11 @@ export const readFileToolDefinition: MistralTool = {
   },
 };
 
-/**
- * Valida si una ruta resuelta está de forma segura dentro del directorio base.
- */
 export function isPathInside(baseDir: string, targetPath: string): boolean {
   const relative = path.relative(baseDir, targetPath);
   return !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
-/**
- * Detecta si un archivo contiene secretos o información sensible (.env, keys, certs).
- */
 export function isSensitiveFile(filePath: string): boolean {
   const base = path.basename(filePath).toLowerCase();
   if (base === ".env" || base.startsWith(".env.")) return true;
@@ -55,9 +49,6 @@ export function isSensitiveFile(filePath: string): boolean {
   return false;
 }
 
-/**
- * Ejecuta la lectura segura de un archivo dentro del workspace.
- */
 export async function executeReadFile(
   args: ReadFileArgs,
   workspaceDir: string = process.cwd(),
@@ -65,7 +56,7 @@ export async function executeReadFile(
 ): Promise<string> {
   if (!args || typeof args.path !== "string" || args.path.trim() === "") {
     return JSON.stringify({
-      error: "El argumento 'path' es requerido y debe ser una cadena válida.",
+      error: "The 'path' argument is required and must be a valid string.",
     });
   }
 
@@ -73,31 +64,29 @@ export async function executeReadFile(
   const resolvedBase = path.resolve(workspaceDir);
   const resolvedPath = path.resolve(resolvedBase, rawPath);
 
-  // Verificación de seguridad contra Path Traversal
   if (!isPathInside(resolvedBase, resolvedPath)) {
     return JSON.stringify({
-      error: `Acceso denegado: La ruta '${rawPath}' se encuentra fuera del espacio de trabajo permitido.`,
+      error: `Access denied: Path '${rawPath}' is outside the allowed workspace.`,
     });
   }
 
   if (!fs.existsSync(resolvedPath)) {
     return JSON.stringify({
-      error: `El archivo '${rawPath}' no existe en el espacio de trabajo.`,
+      error: `File '${rawPath}' does not exist in the workspace.`,
     });
   }
 
-  // Verificación de archivos sensibles (.env, claves privadas, certificados)
   if (isSensitiveFile(rawPath)) {
     if (!onConfirmSensitive) {
       return JSON.stringify({
-        error: `Acceso denegado: '${rawPath}' es un archivo sensible. Se requiere confirmación explícita del usuario para leerlo.`,
+        error: `Access denied: '${rawPath}' is a sensitive file and requires explicit user confirmation.`,
       });
     }
 
-    const allowed = await onConfirmSensitive(`leer el archivo sensible '${rawPath}'`);
+    const allowed = await onConfirmSensitive(`read sensitive file '${rawPath}'`);
     if (!allowed) {
       return JSON.stringify({
-        error: `Lectura cancelada: El usuario denegó el acceso al archivo sensible '${rawPath}'.`,
+        error: `Read cancelled: The user denied access to sensitive file '${rawPath}'.`,
       });
     }
   }
@@ -105,16 +94,15 @@ export async function executeReadFile(
   const stats = fs.statSync(resolvedPath);
   if (stats.isDirectory()) {
     return JSON.stringify({
-      error: `'${rawPath}' es un directorio, no un archivo de texto.`,
+      error: `'${rawPath}' is a directory, not a text file.`,
     });
   }
 
-  // Comprobar tamaño antes de leer en memoria
   if (stats.size > MAX_FILE_SIZE_BYTES && !args.start_line && !args.end_line) {
     return JSON.stringify({
-      error: `El archivo '${rawPath}' es demasiado grande (${(stats.size / 1024).toFixed(
+      error: `File '${rawPath}' is too large (${(stats.size / 1024).toFixed(
         1
-      )} KB > ${MAX_FILE_SIZE_BYTES / 1024} KB). Especifica 'start_line' y 'end_line' para leer fragmentos específicos.`,
+      )} KB > ${MAX_FILE_SIZE_BYTES / 1024} KB). Specify 'start_line' and 'end_line' to read specific chunks.`,
     });
   }
 
@@ -145,7 +133,7 @@ export async function executeReadFile(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return JSON.stringify({
-      error: `Error al leer el archivo '${rawPath}': ${message}`,
+      error: `Error reading file '${rawPath}': ${message}`,
     });
   }
 }
