@@ -8,6 +8,7 @@ export interface ExecuteCommandArgs {
   command: string;
   timeout_seconds?: number;
   allow_network?: boolean;
+  allow_env_secrets?: boolean;
 }
 
 export const executeCommandToolDefinition: MistralTool = {
@@ -33,6 +34,11 @@ export const executeCommandToolDefinition: MistralTool = {
           description:
             "Whether to allow network access. Defaults to false for security.",
         },
+        allow_env_secrets: {
+          type: "boolean",
+          description:
+            "Whether to expose workspace .env to the command. Defaults to false for security.",
+        },
       },
       required: ["command"],
     },
@@ -55,7 +61,7 @@ export async function executeExecuteCommand(
   if (!isBubblewrapAvailable()) {
     return JSON.stringify({
       error:
-        "Bubblewrap sandbox engine ('bwrap') is not available on this system. Install bubblewrap ('sudo apt install bubblewrap') to enable safe sandboxed command execution.",
+        "Bubblewrap sandbox engine ('bwrap') is not available or functional on this system (requires Linux with user namespace support). Command execution is blocked to fail closed.",
     });
   }
 
@@ -81,6 +87,7 @@ export async function executeExecuteCommand(
     const result = await runInBubblewrap(command, {
       workspaceDir,
       allowNetwork: Boolean(args.allow_network),
+      allowEnvSecrets: Boolean(args.allow_env_secrets),
       timeoutMs,
     });
 
