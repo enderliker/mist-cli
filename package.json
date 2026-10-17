@@ -1,6 +1,6 @@
 {
   "name": "mistral-cli",
-  "version": "0.2.0-beta.1",
+  "version": "0.3.0-beta.1",
   "description": "Minimalist developer CLI and agent for Codestral (Mistral AI) with sandboxed tool calling",
   "type": "module",
   "main": "dist/index.js",

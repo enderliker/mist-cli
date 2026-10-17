@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CodestralAgent, buildSystemPrompt } from "../src/agent.js";
 import { MistralCliConfig } from "../src/config.js";
+import { getAllToolDefinitions } from "../src/tools/index.js";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -55,6 +56,9 @@ describe("CodestralAgent", () => {
     expect(prompt).toContain("execute_command");
     expect(prompt).toContain("allow_network: true");
     expect(prompt).toContain("web_search");
+    expect(prompt).toContain("search_files");
+    expect(prompt).toContain("edit_file");
+    expect(prompt).toContain("fetch_web_page");
   });
 
   it("responds directly when model triggers no tool calls", async () => {
@@ -247,4 +251,18 @@ describe("CodestralAgent", () => {
     expect(history[3].name).toBe("execute_command");
     expect(history[3].content).toContain("sandbox-agent-test");
   });
+
+  it("exposes all 8 essential developer tools in getAllToolDefinitions", () => {
+    const tools = getAllToolDefinitions().map((t) => t.function.name);
+    expect(tools).toContain("read_file");
+    expect(tools).toContain("list_files");
+    expect(tools).toContain("write_file");
+    expect(tools).toContain("execute_command");
+    expect(tools).toContain("web_search");
+    expect(tools).toContain("search_files");
+    expect(tools).toContain("edit_file");
+    expect(tools).toContain("fetch_web_page");
+    expect(tools.length).toBe(8);
+  });
 });
+

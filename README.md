@@ -15,9 +15,12 @@ Equipped with an autonomous agent and native function calling to inspect, read, 
 - **Local Workspace & Web Tools**:
   - `list_files`: Inspect workspace file trees and directory structures with automated exclusion of noise directories (`node_modules`, `.git`, `dist`).
   - `read_file`: Read entire files or specific line slices with a 100 KB safety limit.
-  - `write_file`: Create or update project files with recursive directory creation.
-  - `execute_command`: Run shell commands and tests inside an isolated Linux namespace sandbox.
+  - `write_file`: Create new project files or assets with recursive parent directory creation.
+  - `edit_file`: Surgically replace target text blocks in existing files with character-exact match verification.
+  - `search_files`: Fast codebase grep and regex pattern search across workspace files with line numbering.
+  - `execute_command`: Run shell commands and tests inside an isolated Linux namespace sandbox (Bubblewrap).
   - `web_search`: Search the live web for up-to-date documentation, APIs, and technical references via Tavily API.
+  - `fetch_web_page`: Extract readable text and markdown content from web documentation URLs.
 - **Modern Ink React-based TUI**: Rich terminal interface with flexbox layout, live input cursor, animated thinking spinner, and interactive security dialogs.
 - **Security & Guardrails**:
   - **Native OS Sandboxing (Bubblewrap)**: Commands run in unprivileged Linux namespaces (`bwrap`) with read-only system mounts, isolated `/tmp`, network unshared by default, and strict containment to the workspace.

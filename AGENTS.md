@@ -33,8 +33,11 @@ src/
     ├── read-file.ts      # File reader with path traversal & sensitive file checks
     ├── list-files.ts     # Workspace directory explorer
     ├── write-file.ts     # Safe file writer with parent directory creation
+    ├── edit-file.ts      # Surgical search & replace text editor
+    ├── search-files.ts   # Workspace grep and code pattern search
     ├── execute-command.ts# Sandboxed command execution tool
     ├── web-search.ts     # Real-time web search tool via Tavily API
+    ├── fetch-web-page.ts # Web page text/markdown content extractor
     ├── sandbox/
     │   └── bubblewrap.ts # Linux namespace sandbox engine (bwrap)
     └── index.ts          # Tool registry and dispatcher

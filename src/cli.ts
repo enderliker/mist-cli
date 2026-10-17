@@ -4,7 +4,7 @@ import { CodestralAgent } from "./agent.js";
 import { resolveConfig, MistralCliConfig } from "./config.js";
 import { startTui } from "./ui/index.js";
 
-export const VERSION = "0.2.0-beta.1";
+export const VERSION = "0.3.0-beta.1";
 
 export interface ParsedArgs {
   help: boolean;

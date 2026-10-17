@@ -11,7 +11,7 @@ describe("CLI Argument Parsing", () => {
   it("detects version flags", () => {
     expect(parseArgs(["--version"]).version).toBe(true);
     expect(parseArgs(["-v"]).version).toBe(true);
-    expect(VERSION).toBe("0.2.0-beta.1");
+    expect(VERSION).toBe("0.3.0-beta.1");
   });
 
   it("parses custom model and base-url", () => {
