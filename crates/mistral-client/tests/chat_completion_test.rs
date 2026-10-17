@@ -203,3 +203,51 @@ async fn test_chat_complete_api_error_response() {
         other => panic!("Expected MistralError::Api, got {:?}", other),
     }
 }
+
+#[tokio::test]
+async fn test_chat_complete_api_error_response_nested_object() {
+    let mock_server = MockServer::start().await;
+
+    let error_body = json!({
+        "error": {
+            "message": "Model 'codestral-latest' does not exist or you do not have access to it.",
+            "type": "invalid_request_error"
+        }
+    });
+
+    Mock::given(method("POST"))
+        .and(path("/v1/chat/completions"))
+        .respond_with(ResponseTemplate::new(404).set_body_json(error_body))
+        .mount(&mock_server)
+        .await;
+
+    let client = MistralClient::new("key").with_server_url(mock_server.uri());
+
+    let req = ChatCompletionRequest {
+        model: "codestral-latest".to_string(),
+        messages: vec![ChatMessage::user("Test prompt")],
+        tools: None,
+        tool_choice: None,
+        temperature: None,
+        top_p: None,
+        max_tokens: None,
+        stream: None,
+        random_seed: None,
+    };
+
+    let result = client.chat().complete(&req).await;
+
+    match result {
+        Err(MistralError::Api {
+            status_code,
+            message,
+        }) => {
+            assert_eq!(status_code, 404);
+            assert_eq!(
+                message,
+                "Model 'codestral-latest' does not exist or you do not have access to it."
+            );
+        }
+        other => panic!("Expected MistralError::Api, got {:?}", other),
+    }
+}

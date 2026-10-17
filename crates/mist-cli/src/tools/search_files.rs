@@ -1,4 +1,4 @@
-use super::types::{is_path_inside, ConfirmCallback};
+use super::types::{is_path_inside, is_sensitive_file, ConfirmCallback};
 use regex::RegexBuilder;
 use serde_json::json;
 use std::collections::HashSet;
@@ -115,8 +115,10 @@ pub async fn execute_search_files(
 
     let canonical_workspace =
         fs::canonicalize(workspace_dir).unwrap_or_else(|_| workspace_dir.to_path_buf());
+    let canonical_search_root =
+        fs::canonicalize(&search_root).unwrap_or_else(|_| search_root.clone());
 
-    let metadata = match fs::metadata(&search_root) {
+    let metadata = match fs::metadata(&canonical_search_root) {
         Ok(m) => m,
         Err(e) => {
             return json!({ "error": format!("Failed to inspect path '{}': {}", raw_path, e) })
@@ -125,8 +127,15 @@ pub async fn execute_search_files(
     };
 
     if metadata.is_file() {
-        if let Ok(content) = fs::read_to_string(&search_root) {
-            let rel_path = match search_root.strip_prefix(&canonical_workspace) {
+        if is_sensitive_file(raw_path, workspace_dir) {
+            return json!({
+                "error": format!("Access denied: Path '{}' is a sensitive file and requires explicit permission to read.", raw_path)
+            })
+            .to_string();
+        }
+
+        if let Ok(content) = fs::read_to_string(&canonical_search_root) {
+            let rel_path = match canonical_search_root.strip_prefix(&canonical_workspace) {
                 Ok(p) => p.to_string_lossy().to_string(),
                 Err(_) => raw_path.to_string(),
             };
@@ -203,6 +212,10 @@ pub async fn execute_search_files(
                         truncated,
                     );
                 } else if file_type.is_file() {
+                    if is_sensitive_file(file_name, workspace_root) {
+                        continue;
+                    }
+
                     if !matches_file_pattern(file_name, file_pattern) {
                         continue;
                     }
@@ -240,7 +253,7 @@ pub async fn execute_search_files(
         }
 
         walk(
-            &search_root,
+            &canonical_search_root,
             &canonical_workspace,
             &ignored_set,
             file_pattern,

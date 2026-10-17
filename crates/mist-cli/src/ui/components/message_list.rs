@@ -115,13 +115,27 @@ pub fn render_message_list(
         }
     }
 
-    let total_lines = lines.len() as u16;
+    let total_visual_lines: u16 = if area.width > 0 {
+        lines
+            .iter()
+            .map(|l| {
+                let w = l.width();
+                if w == 0 {
+                    1
+                } else {
+                    (w as u16).div_ceil(area.width).max(1)
+                }
+            })
+            .sum()
+    } else {
+        lines.len() as u16
+    };
     let visible_height = area.height;
 
-    if (auto_scroll || *scroll_offset + visible_height > total_lines)
-        && total_lines > visible_height
+    if (auto_scroll || *scroll_offset + visible_height > total_visual_lines)
+        && total_visual_lines > visible_height
     {
-        *scroll_offset = total_lines.saturating_sub(visible_height);
+        *scroll_offset = total_visual_lines.saturating_sub(visible_height);
     }
 
     let paragraph = Paragraph::new(lines)

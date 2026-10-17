@@ -27,6 +27,10 @@ fn test_cli_args_parsing() {
         Some("https://custom.api.mistral.ai")
     );
     assert_eq!(args.prompt.join(" "), "Explain the codebase");
+    assert!(!args.repl);
+
+    let repl_args = CliArgs::parse_from(["mist", "--repl"]);
+    assert!(repl_args.repl);
 }
 
 #[tokio::test]

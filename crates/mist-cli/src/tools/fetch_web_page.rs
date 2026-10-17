@@ -107,11 +107,57 @@ pub async fn execute_fetch_web_page(
         }
     };
 
-    if !raw_url.starts_with("http://") && !raw_url.starts_with("https://") {
+    let parsed_url = match reqwest::Url::parse(raw_url) {
+        Ok(u) => u,
+        Err(e) => {
+            return json!({ "error": format!("Invalid URL: {}", e) }).to_string();
+        }
+    };
+
+    if parsed_url.scheme() != "http" && parsed_url.scheme() != "https" {
         return json!({
             "error": "Invalid URL protocol. Only http: and https: are allowed."
         })
         .to_string();
+    }
+
+    let allow_local = std::env::var("MIST_ALLOW_LOCAL_FETCH")
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+
+    if !allow_local {
+        if let Some(host) = parsed_url.host_str() {
+            let host_lower = host.to_lowercase();
+            if host_lower == "localhost"
+                || host_lower.ends_with(".localhost")
+                || host_lower.ends_with(".local")
+                || host_lower == "metadata.google.internal"
+            {
+                return json!({
+                    "error": "Access denied: Requesting localhost, local network, or cloud metadata endpoints is forbidden for security."
+                })
+                .to_string();
+            }
+
+            if let Ok(ip) = host.parse::<std::net::IpAddr>() {
+                let is_blocked = match ip {
+                    std::net::IpAddr::V4(ipv4) => {
+                        ipv4.is_loopback()
+                            || ipv4.is_private()
+                            || ipv4.is_link_local()
+                            || ipv4.is_broadcast()
+                            || ipv4.is_unspecified()
+                    }
+                    std::net::IpAddr::V6(ipv6) => ipv6.is_loopback() || ipv6.is_unspecified(),
+                };
+                if is_blocked {
+                    return json!({
+                        "error": format!("Access denied: IP address '{}' is private or local and blocked for security.", ip)
+                    })
+                    .to_string();
+                }
+            }
+        }
     }
 
     let max_length = args

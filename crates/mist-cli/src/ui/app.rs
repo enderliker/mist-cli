@@ -142,7 +142,7 @@ impl App {
         agent_history_count: usize,
     ) {
         // 1. Security confirmation prompt active
-        if let Some((_, sender)) = self.confirm_state.take() {
+        if let Some((description, sender)) = self.confirm_state.take() {
             match key.code {
                 KeyCode::Char('y')
                 | KeyCode::Char('Y')
@@ -157,8 +157,8 @@ impl App {
                     let _ = sender.send(false);
                 }
                 _ => {
-                    // Put back if key was unrelated
-                    self.confirm_state = Some((String::new(), sender));
+                    // Put back if key was unrelated, preserving original description
+                    self.confirm_state = Some((description, sender));
                 }
             }
             return;

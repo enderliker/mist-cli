@@ -91,9 +91,19 @@ impl ChatClient {
                 .ok()
                 .and_then(|v| {
                     v.get("message")
-                        .or_else(|| v.get("error"))
                         .and_then(|m| m.as_str())
                         .map(|s| s.to_string())
+                        .or_else(|| {
+                            v.get("error").and_then(|e| {
+                                e.as_str()
+                                    .map(|s| s.to_string())
+                                    .or_else(|| {
+                                        e.get("message")
+                                            .and_then(|m| m.as_str())
+                                            .map(|s| s.to_string())
+                                    })
+                            })
+                        })
                 })
                 .unwrap_or(error_text);
 

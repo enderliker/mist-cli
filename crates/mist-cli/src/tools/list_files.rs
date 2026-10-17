@@ -15,6 +15,9 @@ const IGNORED_NAMES: &[&str] = &[
     ".agents",
 ];
 
+const MAX_RECURSIVE_ENTRIES: usize = 500;
+const MAX_RECURSIVE_DEPTH: usize = 6;
+
 pub async fn execute_list_files(
     args: serde_json::Value,
     workspace_dir: &Path,
@@ -66,20 +69,35 @@ pub async fn execute_list_files(
     let ignored_set: HashSet<&str> = IGNORED_NAMES.iter().copied().collect();
 
     let mut entries = Vec::new();
+    let mut truncated = false;
 
     if recursive {
         fn collect_recursive(
             dir: &Path,
             base_dir: &Path,
             ignored: &HashSet<&str>,
+            depth: usize,
             out: &mut Vec<serde_json::Value>,
+            truncated: &mut bool,
         ) {
+            if depth > MAX_RECURSIVE_DEPTH || out.len() >= MAX_RECURSIVE_ENTRIES {
+                if out.len() >= MAX_RECURSIVE_ENTRIES {
+                    *truncated = true;
+                }
+                return;
+            }
+
             let rd = match fs::read_dir(dir) {
                 Ok(rd) => rd,
                 Err(_) => return,
             };
 
             for entry in rd.flatten() {
+                if out.len() >= MAX_RECURSIVE_ENTRIES {
+                    *truncated = true;
+                    break;
+                }
+
                 let name_os = entry.file_name();
                 let name = match name_os.to_str() {
                     Some(n) => n,
@@ -113,12 +131,12 @@ pub async fn execute_list_files(
                 }));
 
                 if file_type == "directory" {
-                    collect_recursive(&path, base_dir, ignored, out);
+                    collect_recursive(&path, base_dir, ignored, depth + 1, out, truncated);
                 }
             }
         }
 
-        collect_recursive(&resolved_path, &resolved_path, &ignored_set, &mut entries);
+        collect_recursive(&resolved_path, &resolved_path, &ignored_set, 0, &mut entries, &mut truncated);
     } else {
         let rd = match fs::read_dir(&resolved_path) {
             Ok(rd) => rd,
@@ -176,6 +194,7 @@ pub async fn execute_list_files(
     json!({
         "path": raw_path,
         "total_entries": entries.len(),
+        "truncated": truncated,
         "entries": entries
     })
     .to_string()

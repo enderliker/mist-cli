@@ -1,6 +1,8 @@
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 use thiserror::Error;
 
 pub const DEFAULT_TIMEOUT_MS: u64 = 30_000;
@@ -203,11 +205,36 @@ pub fn build_bubblewrap_args(
     }
 
     if !options.allow_env_secrets {
-        let env_file = real_workspace.join(".env");
-        if env_file.exists() {
+        let mut sensitive_files = Vec::new();
+        fn scan_sensitive(dir: &Path, ws: &Path, out: &mut Vec<PathBuf>, depth: usize) {
+            if depth > 4 {
+                return;
+            }
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if name == ".git" || name == "target" || name == "node_modules" {
+                        continue;
+                    }
+                    if let Ok(ft) = entry.file_type() {
+                        if ft.is_file() {
+                            if crate::tools::types::is_sensitive_file(&name, ws) {
+                                out.push(path);
+                            }
+                        } else if ft.is_dir() {
+                            scan_sensitive(&path, ws, out, depth + 1);
+                        }
+                    }
+                }
+            }
+        }
+        scan_sensitive(&real_workspace, &real_workspace, &mut sensitive_files, 0);
+
+        for sfile in sensitive_files {
             args.push("--ro-bind".to_string());
             args.push("/dev/null".to_string());
-            args.push(env_file.to_string_lossy().to_string());
+            args.push(sfile.to_string_lossy().to_string());
         }
     }
 
@@ -266,39 +293,106 @@ pub fn run_in_bubblewrap(
     let args = build_bubblewrap_args(command, options)?;
     let max_bytes = options.max_output_bytes.unwrap_or(MAX_OUTPUT_BYTES);
 
-    let output = Command::new(&bwrap_bin)
+    let mut child = Command::new(&bwrap_bin)
         .args(&args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .output()
+        .spawn()
         .map_err(|e| SandboxError::ExecutionFailed(e.to_string()))?;
 
-    let stdout_bytes = &output.stdout;
-    let stderr_bytes = &output.stderr;
+    let mut stdout_pipe = child
+        .stdout
+        .take()
+        .ok_or_else(|| SandboxError::ExecutionFailed("Failed to capture stdout".to_string()))?;
+    let mut stderr_pipe = child
+        .stderr
+        .take()
+        .ok_or_else(|| SandboxError::ExecutionFailed("Failed to capture stderr".to_string()))?;
 
-    let (stdout_slice, stdout_truncated) = if stdout_bytes.len() > max_bytes {
-        (&stdout_bytes[..max_bytes], true)
-    } else {
-        (stdout_bytes.as_slice(), false)
-    };
+    let stdout_handle = std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        let mut chunk = [0u8; 4096];
+        let mut truncated = false;
+        while let Ok(n) = stdout_pipe.read(&mut chunk) {
+            if n == 0 {
+                break;
+            }
+            if buf.len() < max_bytes {
+                let to_take = n.min(max_bytes - buf.len());
+                buf.extend_from_slice(&chunk[..to_take]);
+                if to_take < n {
+                    truncated = true;
+                }
+            } else {
+                truncated = true;
+            }
+        }
+        (buf, truncated)
+    });
 
-    let (stderr_slice, stderr_truncated) = if stderr_bytes.len() > max_bytes {
-        (&stderr_bytes[..max_bytes], true)
-    } else {
-        (stderr_bytes.as_slice(), false)
-    };
+    let stderr_handle = std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        let mut chunk = [0u8; 4096];
+        let mut truncated = false;
+        while let Ok(n) = stderr_pipe.read(&mut chunk) {
+            if n == 0 {
+                break;
+            }
+            if buf.len() < max_bytes {
+                let to_take = n.min(max_bytes - buf.len());
+                buf.extend_from_slice(&chunk[..to_take]);
+                if to_take < n {
+                    truncated = true;
+                }
+            } else {
+                truncated = true;
+            }
+        }
+        (buf, truncated)
+    });
 
-    let stdout = String::from_utf8_lossy(stdout_slice).to_string();
-    let stderr = String::from_utf8_lossy(stderr_slice).to_string();
+    let timeout_duration = Duration::from_millis(options.timeout_ms.unwrap_or(DEFAULT_TIMEOUT_MS));
+    let start_time = Instant::now();
+    let mut timed_out = false;
+    let mut exit_code = None;
+
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                exit_code = status.code();
+                break;
+            }
+            Ok(None) => {
+                if start_time.elapsed() >= timeout_duration {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    timed_out = true;
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            Err(e) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(SandboxError::ExecutionFailed(e.to_string()));
+            }
+        }
+    }
+
+    let (stdout_bytes, stdout_truncated) = stdout_handle.join().unwrap_or_default();
+    let (stderr_bytes, stderr_truncated) = stderr_handle.join().unwrap_or_default();
+
+    let stdout = String::from_utf8_lossy(&stdout_bytes).to_string();
+    let stderr = String::from_utf8_lossy(&stderr_bytes).to_string();
 
     Ok(ExecutionResult {
-        exit_code: output.status.code(),
+        exit_code,
         stdout,
         stderr,
         stdout_truncated,
         stderr_truncated,
         truncated: stdout_truncated || stderr_truncated,
-        timed_out: false,
+        timed_out,
         sandboxed: true,
         engine: "bubblewrap",
     })

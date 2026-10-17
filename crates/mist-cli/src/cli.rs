@@ -25,6 +25,10 @@ pub struct CliArgs {
     #[arg(short = 'b', long = "base-url")]
     pub base_url: Option<String>,
 
+    /// Launch interactive session in classic REPL mode
+    #[arg(long = "repl")]
+    pub repl: bool,
+
     /// Optional prompt for one-shot execution
     #[arg(trailing_var_arg = true)]
     pub prompt: Vec<String>,
@@ -207,6 +211,14 @@ pub async fn run_cli() -> i32 {
     let workspace_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
     let mut agent = CodestralAgent::new(config, workspace_dir, None);
 
+    if args.repl {
+        if let Err(e) = run_repl(&mut agent).await {
+            eprintln!("{} {}", "[Error]".red().bold(), e);
+            return 1;
+        }
+        return 0;
+    }
+
     if !args.prompt.is_empty() {
         let prompt_text = args.prompt.join(" ");
         return run_one_shot(&mut agent, &prompt_text).await;
@@ -218,6 +230,11 @@ pub async fn run_cli() -> i32 {
         if std::io::stdin().read_to_string(&mut buffer).is_ok() && !buffer.trim().is_empty() {
             return run_one_shot(&mut agent, buffer.trim()).await;
         }
+        eprintln!(
+            "{} Standard input is not a terminal and no prompt was provided.\nFor usage, run: mist --help",
+            "[Error]".red().bold()
+        );
+        return 1;
     }
 
     if std::io::stdout().is_terminal() {

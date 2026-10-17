@@ -154,6 +154,19 @@ fn test_ui_security_prompt_modal() {
     let (prompt_tx, _) = mpsc::channel(10);
     let (reset_tx, _) = mpsc::channel(10);
 
+    // Press an unrelated key (e.g. arrow or 'x') -> description must be preserved
+    app.handle_key(
+        KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE),
+        &prompt_tx,
+        &reset_tx,
+        1,
+    );
+    assert!(app.confirm_state.is_some());
+    assert_eq!(
+        app.confirm_state.as_ref().unwrap().0,
+        "execute sandboxed command 'cargo test'"
+    );
+
     // Press 'y' to authorize
     app.handle_key(
         KeyEvent::new(KeyCode::Char('y'), KeyModifiers::NONE),

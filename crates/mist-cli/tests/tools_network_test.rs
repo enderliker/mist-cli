@@ -120,6 +120,7 @@ async fn test_fetch_web_page_html_cleaning_and_fallback() {
     assert!(!md.contains("<nav>"));
 
     // 3. Native fetch mock test
+    std::env::set_var("MIST_ALLOW_LOCAL_FETCH", "1");
     let mock_server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/doc"))
@@ -133,6 +134,7 @@ async fn test_fetch_web_page_html_cleaning_and_fallback() {
         None,
     )
     .await;
+    std::env::remove_var("MIST_ALLOW_LOCAL_FETCH");
 
     let parsed: serde_json::Value = serde_json::from_str(&res_fetch).expect("parse fetch response");
     assert_eq!(parsed["engine"], "native_fetch");
@@ -141,3 +143,36 @@ async fn test_fetch_web_page_html_cleaning_and_fallback() {
         .unwrap()
         .contains("# Welcome to Test"));
 }
+
+#[tokio::test]
+async fn test_fetch_web_page_blocks_ssrf() {
+    std::env::remove_var("MIST_ALLOW_LOCAL_FETCH");
+
+    // 1. Localhost blocked
+    let res_localhost = execute_fetch_web_page(
+        json!({ "url": "http://localhost:8080/admin" }),
+        None,
+        None,
+    )
+    .await;
+    assert!(res_localhost.contains("Access denied"));
+
+    // 2. Loopback 127.0.0.1 blocked
+    let res_loopback = execute_fetch_web_page(
+        json!({ "url": "http://127.0.0.1:3000/keys" }),
+        None,
+        None,
+    )
+    .await;
+    assert!(res_loopback.contains("Access denied"));
+
+    // 3. Cloud metadata 169.254.169.254 blocked
+    let res_meta = execute_fetch_web_page(
+        json!({ "url": "http://169.254.169.254/latest/meta-data/" }),
+        None,
+        None,
+    )
+    .await;
+    assert!(res_meta.contains("Access denied"));
+}
+

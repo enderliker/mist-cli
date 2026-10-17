@@ -119,3 +119,36 @@ async fn test_path_traversal_rejection() {
     let res = execute_read_file(json!({ "path": "../outside.txt" }), ws, &None).await;
     assert!(res.contains("outside the allowed workspace"));
 }
+
+#[tokio::test]
+async fn test_read_large_file_chunking() {
+    let tmp = tempdir().expect("create temp dir");
+    let ws = tmp.path();
+
+    // Create a file > 100 KB (e.g. 150 KB)
+    let line = "A".repeat(150);
+    let content = (0..1000).map(|_| line.as_str()).collect::<Vec<_>>().join("\n");
+    fs::write(ws.join("large.txt"), content).unwrap();
+
+    // Whole read rejected
+    let res_whole = execute_read_file(json!({ "path": "large.txt" }), ws, &None).await;
+    assert!(res_whole.contains("too large"));
+
+    // Chunked read succeeds
+    let res_chunk = execute_read_file(
+        json!({
+            "path": "large.txt",
+            "start_line": 5,
+            "end_line": 10
+        }),
+        ws,
+        &None,
+    )
+    .await;
+
+    let json_val: serde_json::Value = serde_json::from_str(&res_chunk).expect("parse read json");
+    assert_eq!(json_val["lines_read"], 6);
+    assert_eq!(json_val["start_line"], 5);
+    assert_eq!(json_val["end_line"], 10);
+    assert_eq!(json_val["total_lines"], 1000);
+}

@@ -86,3 +86,51 @@ fn test_run_in_bubblewrap_basic_command() {
     assert!(result.sandboxed);
     assert_eq!(result.engine, "bubblewrap");
 }
+
+#[test]
+fn test_run_in_bubblewrap_timeout() {
+    if !is_bubblewrap_available(None) {
+        eprintln!("Bubblewrap not available on this environment, skipping timeout test.");
+        return;
+    }
+
+    let tmp = tempdir().expect("create temp dir");
+    let options = BubblewrapOptions {
+        workspace_dir: tmp.path().to_path_buf(),
+        allow_network: false,
+        allow_env_secrets: false,
+        timeout_ms: Some(100),
+        max_output_bytes: Some(1024),
+        extra_read_only_paths: vec![],
+    };
+
+    let result = run_in_bubblewrap("sleep 5", &options, None).expect("runs in bubblewrap");
+    assert!(result.timed_out);
+}
+
+#[test]
+fn test_build_bubblewrap_args_masks_sensitive_files() {
+    let tmp = tempdir().expect("create temp dir");
+    std::fs::write(tmp.path().join(".env.local"), "SECRET=xyz").unwrap();
+    std::fs::write(tmp.path().join("id_rsa_backup"), "PRIVATE_KEY").unwrap();
+
+    let options = BubblewrapOptions {
+        workspace_dir: tmp.path().to_path_buf(),
+        allow_network: false,
+        allow_env_secrets: false,
+        timeout_ms: None,
+        max_output_bytes: None,
+        extra_read_only_paths: vec![],
+    };
+
+    let args = build_bubblewrap_args("echo 1", &options).expect("build args");
+    let dev_null_indices: Vec<usize> = args
+        .iter()
+        .enumerate()
+        .filter(|(_, a)| *a == "/dev/null")
+        .map(|(i, _)| i)
+        .collect();
+
+    // At least 2 sensitive files masked with /dev/null
+    assert!(dev_null_indices.len() >= 2);
+}

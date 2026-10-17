@@ -48,9 +48,36 @@ async fn test_search_files_regex_and_line_numbers() {
     let res_json: serde_json::Value = serde_json::from_str(&search_res).expect("parse search json");
     assert_eq!(res_json["matches_count"], 1);
     let match_entry = &res_json["matches"][0];
+    assert_eq!(match_entry["file"], "src/lib.rs");
     assert_eq!(match_entry["line"], 2);
     assert!(match_entry["text"]
         .as_str()
         .unwrap()
         .contains("target pattern"));
+}
+
+#[tokio::test]
+async fn test_search_files_ignores_sensitive_files() {
+    let tmp = tempdir().expect("create temp dir");
+    let ws = tmp.path();
+
+    fs::write(ws.join(".env"), "SECRET_TOKEN=super_secret_value").unwrap();
+    fs::write(ws.join("id_rsa"), "PRIVATE KEY DATA").unwrap();
+    fs::create_dir_all(ws.join("src")).unwrap();
+    fs::write(ws.join("src/config.rs"), "pub const TOKEN_VAR: &str = \"SECRET_TOKEN\";").unwrap();
+
+    let search_res = execute_search_files(
+        json!({
+            "pattern": "SECRET_TOKEN",
+            "path": "."
+        }),
+        ws,
+        &None,
+    )
+    .await;
+
+    let res_json: serde_json::Value = serde_json::from_str(&search_res).expect("parse search json");
+    assert_eq!(res_json["matches_count"], 1);
+    assert_eq!(res_json["matches"][0]["file"], "src/config.rs");
+    assert!(!search_res.contains("super_secret_value"));
 }

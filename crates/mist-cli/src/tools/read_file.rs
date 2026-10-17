@@ -1,6 +1,7 @@
 use super::types::{is_path_inside, is_sensitive_file, ConfirmCallback};
 use serde_json::json;
 use std::fs;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 pub const MAX_FILE_SIZE_BYTES: u64 = 100 * 1024;
@@ -82,41 +83,58 @@ pub async fn execute_read_file(
         .to_string();
     }
 
-    let content_str = match fs::read_to_string(&resolved_path) {
-        Ok(c) => c,
+    let file = match fs::File::open(&resolved_path) {
+        Ok(f) => f,
         Err(e) => {
-            return json!({ "error": format!("Failed to read file '{}': {}", raw_path, e) })
+            return json!({ "error": format!("Failed to open file '{}': {}", raw_path, e) })
                 .to_string();
         }
     };
 
-    let all_lines: Vec<&str> = content_str.lines().collect();
-    let total_lines = all_lines.len();
+    let reader = BufReader::new(file);
+    let mut selected_lines = Vec::new();
+    let mut selected_bytes = 0usize;
+    let mut total_lines = 0usize;
+    let mut actual_start = 1usize;
+    let mut actual_end = 0usize;
 
-    let (selected_lines, actual_start, actual_end) = match (start_line, end_line) {
-        (Some(start), Some(end)) => {
-            let s = start.max(1).min(total_lines.max(1));
-            let e = end.min(total_lines).max(s);
-            if s > total_lines {
-                (vec![], s, e)
-            } else {
-                (all_lines[(s - 1)..e].to_vec(), s, e)
+    let target_start = start_line.unwrap_or(1).max(1);
+    let target_end = end_line;
+
+    for line_result in reader.lines() {
+        let line = match line_result {
+            Ok(l) => l,
+            Err(e) => {
+                return json!({ "error": format!("Failed to read line {} of '{}': {}", total_lines + 1, raw_path, e) })
+                    .to_string();
             }
-        }
-        (Some(start), None) => {
-            let s = start.max(1).min(total_lines.max(1));
-            if s > total_lines {
-                (vec![], s, total_lines)
-            } else {
-                (all_lines[(s - 1)..].to_vec(), s, total_lines)
+        };
+        total_lines += 1;
+
+        let in_range = total_lines >= target_start && target_end.is_none_or(|end| total_lines <= end);
+
+        if in_range {
+            if selected_lines.is_empty() {
+                actual_start = total_lines;
             }
+            actual_end = total_lines;
+
+            if selected_bytes + line.len() > MAX_FILE_SIZE_BYTES as usize {
+                selected_lines.push(format!("[Output truncated: exceeded {} KB limit]", MAX_FILE_SIZE_BYTES / 1024));
+                break;
+            }
+            selected_bytes += line.len() + 1;
+            selected_lines.push(line);
         }
-        (None, Some(end)) => {
-            let e = end.min(total_lines);
-            (all_lines[..e].to_vec(), 1, e)
-        }
-        (None, None) => (all_lines, 1, total_lines),
-    };
+    }
+
+    if total_lines == 0 {
+        actual_start = 1;
+        actual_end = 0;
+    } else if selected_lines.is_empty() {
+        actual_start = target_start;
+        actual_end = target_end.unwrap_or(target_start);
+    }
 
     let content = selected_lines.join("\n");
     let lines_read = selected_lines.len();
