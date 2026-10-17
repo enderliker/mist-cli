@@ -18,8 +18,14 @@ pub async fn execute_read_file(
         }
     };
 
-    let start_line = args.get("start_line").and_then(|v| v.as_u64()).map(|n| n as usize);
-    let end_line = args.get("end_line").and_then(|v| v.as_u64()).map(|n| n as usize);
+    let start_line = args
+        .get("start_line")
+        .and_then(|v| v.as_u64())
+        .map(|n| n as usize);
+    let end_line = args
+        .get("end_line")
+        .and_then(|v| v.as_u64())
+        .map(|n| n as usize);
 
     let resolved_path = workspace_dir.join(raw_path);
 

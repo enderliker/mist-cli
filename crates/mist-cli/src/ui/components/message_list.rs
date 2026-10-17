@@ -46,7 +46,9 @@ pub fn render_message_list(
                 lines.push(Line::from(vec![
                     Span::styled(
                         "❯ ",
-                        Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(Color::Magenta)
+                            .add_modifier(Modifier::BOLD),
                     ),
                     Span::raw(msg.content.clone()),
                 ]));
@@ -59,9 +61,14 @@ pub fn render_message_list(
                     Span::styled("┌─ ", Style::default().fg(Color::DarkGray)),
                     Span::styled(
                         "Codestral:",
-                        Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD),
                     ),
-                    Span::styled(format!(" {}┐", top_border), Style::default().fg(Color::DarkGray)),
+                    Span::styled(
+                        format!(" {}┐", top_border),
+                        Style::default().fg(Color::DarkGray),
+                    ),
                 ]));
 
                 for content_line in msg.content.lines() {
@@ -72,9 +79,10 @@ pub fn render_message_list(
                 }
 
                 let bottom_border = "─".repeat(area.width.saturating_sub(4) as usize);
-                lines.push(Line::from(vec![
-                    Span::styled(format!("└{}┘", bottom_border), Style::default().fg(Color::DarkGray)),
-                ]));
+                lines.push(Line::from(vec![Span::styled(
+                    format!("└{}┘", bottom_border),
+                    Style::default().fg(Color::DarkGray),
+                )]));
                 lines.push(Line::default());
             }
             MessageRole::ToolCall => {
@@ -110,9 +118,9 @@ pub fn render_message_list(
     let total_lines = lines.len() as u16;
     let visible_height = area.height;
 
-    if auto_scroll && total_lines > visible_height {
-        *scroll_offset = total_lines.saturating_sub(visible_height);
-    } else if *scroll_offset + visible_height > total_lines && total_lines > visible_height {
+    if (auto_scroll || *scroll_offset + visible_height > total_lines)
+        && total_lines > visible_height
+    {
         *scroll_offset = total_lines.saturating_sub(visible_height);
     }
 

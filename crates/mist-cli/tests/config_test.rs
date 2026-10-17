@@ -6,7 +6,10 @@ use std::collections::HashMap;
 #[test]
 fn test_resolve_config_with_mistral_api_key() {
     let mut env = HashMap::new();
-    env.insert("MISTRAL_API_KEY".to_string(), "mistral-secret-123".to_string());
+    env.insert(
+        "MISTRAL_API_KEY".to_string(),
+        "mistral-secret-123".to_string(),
+    );
 
     let config = resolve_config_from_map(&env).expect("resolves config");
     assert_eq!(config.api_key, "mistral-secret-123");
@@ -17,7 +20,10 @@ fn test_resolve_config_with_mistral_api_key() {
 #[test]
 fn test_resolve_config_with_codestral_api_key() {
     let mut env = HashMap::new();
-    env.insert("CODESTRAL_API_KEY".to_string(), "codestral-secret-456".to_string());
+    env.insert(
+        "CODESTRAL_API_KEY".to_string(),
+        "codestral-secret-456".to_string(),
+    );
 
     let config = resolve_config_from_map(&env).expect("resolves config");
     assert_eq!(config.api_key, "codestral-secret-456");
@@ -29,7 +35,10 @@ fn test_resolve_config_with_codestral_api_key() {
 fn test_resolve_config_with_custom_overrides() {
     let mut env = HashMap::new();
     env.insert("MISTRAL_API_KEY".to_string(), "key-abc".to_string());
-    env.insert("MISTRAL_BASE_URL".to_string(), "https://custom.endpoint.com".to_string());
+    env.insert(
+        "MISTRAL_BASE_URL".to_string(),
+        "https://custom.endpoint.com".to_string(),
+    );
     env.insert("MISTRAL_MODEL".to_string(), "codestral-2501".to_string());
 
     let config = resolve_config_from_map(&env).expect("resolves config");

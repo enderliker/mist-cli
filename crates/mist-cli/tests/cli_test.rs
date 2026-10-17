@@ -41,10 +41,22 @@ async fn test_handle_repl_commands() {
 
     assert_eq!(handle_repl_command("/exit", &mut agent), ReplAction::Exit);
     assert_eq!(handle_repl_command("/quit", &mut agent), ReplAction::Exit);
-    assert_eq!(handle_repl_command("/help", &mut agent), ReplAction::Handled);
-    assert_eq!(handle_repl_command("/history", &mut agent), ReplAction::Handled);
-    assert_eq!(handle_repl_command("/clear", &mut agent), ReplAction::Handled);
-    assert_eq!(handle_repl_command("Hello agent", &mut agent), ReplAction::Continue);
+    assert_eq!(
+        handle_repl_command("/help", &mut agent),
+        ReplAction::Handled
+    );
+    assert_eq!(
+        handle_repl_command("/history", &mut agent),
+        ReplAction::Handled
+    );
+    assert_eq!(
+        handle_repl_command("/clear", &mut agent),
+        ReplAction::Handled
+    );
+    assert_eq!(
+        handle_repl_command("Hello agent", &mut agent),
+        ReplAction::Continue
+    );
 }
 
 #[tokio::test]

@@ -19,8 +19,13 @@ pub enum AppEvent {
     TermEvent(Event),
     Tick,
     AgentResponse(Result<String, String>),
-    ToolCall { name: String, args: String },
-    ToolResult { name: String },
+    ToolCall {
+        name: String,
+        args: String,
+    },
+    ToolResult {
+        name: String,
+    },
     SecurityConfirmRequest {
         description: String,
         respond_to: oneshot::Sender<bool>,
@@ -139,7 +144,10 @@ impl App {
         // 1. Security confirmation prompt active
         if let Some((_, sender)) = self.confirm_state.take() {
             match key.code {
-                KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Char('s') | KeyCode::Char('S') => {
+                KeyCode::Char('y')
+                | KeyCode::Char('Y')
+                | KeyCode::Char('s')
+                | KeyCode::Char('S') => {
                     let _ = sender.send(true);
                 }
                 KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {

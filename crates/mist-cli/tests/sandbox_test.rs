@@ -78,11 +78,11 @@ fn test_run_in_bubblewrap_basic_command() {
         extra_read_only_paths: vec![],
     };
 
-    let result = run_in_bubblewrap("echo 'hello from bwrap'", &options, None)
-        .expect("runs in bubblewrap");
+    let result =
+        run_in_bubblewrap("echo 'hello from bwrap'", &options, None).expect("runs in bubblewrap");
 
     assert_eq!(result.exit_code, Some(0));
     assert!(result.stdout.contains("hello from bwrap"));
-    assert_eq!(result.sandboxed, true);
+    assert!(result.sandboxed);
     assert_eq!(result.engine, "bubblewrap");
 }

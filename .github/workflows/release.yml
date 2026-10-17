@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name for release (e.g. v0.4.0)'
+        required: true
+        default: 'v0.4.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build & Package Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Bubblewrap sandbox dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Build release binaries
+        run: cargo build --workspace --release
+
+      - name: Package release artifact
+        run: |
+          RELEASE_TAG=${{ github.ref_name || inputs.tag_name }}
+          ARCH="x86_64-unknown-linux-gnu"
+          PKG_NAME="mist-cli-${RELEASE_TAG}-${ARCH}"
+          mkdir -p "dist/${PKG_NAME}"
+
+          cp target/release/mist "dist/${PKG_NAME}/"
+          cp target/release/mist-cli "dist/${PKG_NAME}/"
+          cp README.md "dist/${PKG_NAME}/"
+          cp LICENSE "dist/${PKG_NAME}/"
+
+          tar -czf "dist/${PKG_NAME}.tar.gz" -C dist "${PKG_NAME}"
+          cd dist
+          sha256sum "${PKG_NAME}.tar.gz" > "${PKG_NAME}.tar.gz.sha256"
+          cat "${PKG_NAME}.tar.gz.sha256"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || inputs.tag_name }}
+          files: |
+            dist/*.tar.gz
+            dist/*.sha256
+          generate_release_notes: true

@@ -30,9 +30,12 @@ async fn test_execute_command_confirmation_and_execution() {
 
     // 4. User approves confirmation -> runs sandboxed
     let approve_cb: ConfirmCallback = Arc::new(|_| Box::pin(async { true }));
-    let res_approve =
-        execute_execute_command(json!({ "command": "echo 'sandbox ok'" }), ws, &Some(approve_cb))
-            .await;
+    let res_approve = execute_execute_command(
+        json!({ "command": "echo 'sandbox ok'" }),
+        ws,
+        &Some(approve_cb),
+    )
+    .await;
     let json_val: serde_json::Value =
         serde_json::from_str(&res_approve).expect("parse execution json");
     assert_eq!(json_val["exit_code"], 0);
@@ -78,7 +81,8 @@ async fn test_web_search_missing_key_and_mock_response() {
     )
     .await;
 
-    let parsed: serde_json::Value = serde_json::from_str(&res_success).expect("parse search response");
+    let parsed: serde_json::Value =
+        serde_json::from_str(&res_success).expect("parse search response");
     assert_eq!(parsed["query"], "rust lang");
     assert_eq!(parsed["results_count"], 1);
     assert_eq!(parsed["results"][0]["title"], "Rust Programming Language");
@@ -87,7 +91,8 @@ async fn test_web_search_missing_key_and_mock_response() {
 #[tokio::test]
 async fn test_fetch_web_page_html_cleaning_and_fallback() {
     // 1. Invalid protocol
-    let res_invalid = execute_fetch_web_page(json!({ "url": "ftp://example.com" }), None, None).await;
+    let res_invalid =
+        execute_fetch_web_page(json!({ "url": "ftp://example.com" }), None, None).await;
     assert!(res_invalid.contains("Invalid URL protocol"));
 
     // 2. Clean HTML markdown converter
@@ -125,5 +130,8 @@ async fn test_fetch_web_page_html_cleaning_and_fallback() {
 
     let parsed: serde_json::Value = serde_json::from_str(&res_fetch).expect("parse fetch response");
     assert_eq!(parsed["engine"], "native_fetch");
-    assert!(parsed["content"].as_str().unwrap().contains("# Welcome to Test"));
+    assert!(parsed["content"]
+        .as_str()
+        .unwrap()
+        .contains("# Welcome to Test"));
 }

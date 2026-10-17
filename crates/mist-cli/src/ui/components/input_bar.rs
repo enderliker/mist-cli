@@ -24,7 +24,9 @@ pub fn render_input_bar(
         Line::from(vec![
             Span::styled(
                 "codestral> ",
-                Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Magenta)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::raw(value),
             Span::styled("█", Style::default().fg(Color::DarkGray)),

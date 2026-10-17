@@ -1,6 +1,4 @@
-use mistral_client::{
-    MistralClient, CODESTRAL_API_ENDPOINT, DEFAULT_MODEL, MISTRAL_API_ENDPOINT,
-};
+use mistral_client::{MistralClient, CODESTRAL_API_ENDPOINT, DEFAULT_MODEL, MISTRAL_API_ENDPOINT};
 use std::time::Duration;
 
 #[test]

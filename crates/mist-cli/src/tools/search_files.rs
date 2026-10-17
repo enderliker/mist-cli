@@ -31,10 +31,7 @@ fn matches_file_pattern(file_name: &str, pattern: Option<&str>) -> bool {
     }
 
     if pattern.contains('*') {
-        let regex_str = format!(
-            "^{}$",
-            regex::escape(&pattern).replace(r"\*", ".*")
-        );
+        let regex_str = format!("^{}$", regex::escape(&pattern).replace(r"\*", ".*"));
         if let Ok(re) = regex::Regex::new(&regex_str) {
             return re.is_match(&lower_name);
         }
@@ -105,7 +102,8 @@ pub async fn execute_search_files(
             {
                 Ok(re) => re,
                 Err(e) => {
-                    return json!({ "error": format!("Invalid search pattern: {}", e) }).to_string();
+                    return json!({ "error": format!("Invalid search pattern: {}", e) })
+                        .to_string();
                 }
             }
         }
@@ -115,7 +113,8 @@ pub async fn execute_search_files(
     let mut matches = Vec::new();
     let mut truncated = false;
 
-    let canonical_workspace = fs::canonicalize(workspace_dir).unwrap_or_else(|_| workspace_dir.to_path_buf());
+    let canonical_workspace =
+        fs::canonicalize(workspace_dir).unwrap_or_else(|_| workspace_dir.to_path_buf());
 
     let metadata = match fs::metadata(&search_root) {
         Ok(m) => m,
@@ -149,6 +148,7 @@ pub async fn execute_search_files(
             }
         }
     } else {
+        #[allow(clippy::too_many_arguments)]
         fn walk(
             dir: &Path,
             workspace_root: &Path,

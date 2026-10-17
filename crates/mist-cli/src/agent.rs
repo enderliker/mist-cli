@@ -2,9 +2,7 @@ use crate::config::MistralCliConfig;
 use crate::tools::types::ConfirmCallback;
 use crate::tools::ToolRegistry;
 use chrono::{Local, Utc};
-use mistral_client::models::{
-    ChatCompletionRequest, ChatMessage, Role, ToolChoice,
-};
+use mistral_client::models::{ChatCompletionRequest, ChatMessage, Role, ToolChoice};
 use mistral_client::{MistralClient, MistralError};
 use serde_json::json;
 use std::path::{Path, PathBuf};
@@ -195,12 +193,14 @@ impl CodestralAgent {
 
             let response = self.client.chat().complete(&request).await?;
 
-            let choice = response.choices.into_iter().next().ok_or_else(|| {
-                MistralError::Api {
+            let choice = response
+                .choices
+                .into_iter()
+                .next()
+                .ok_or_else(|| MistralError::Api {
                     status_code: 500,
                     message: "No choices returned from Mistral API".to_string(),
-                }
-            })?;
+                })?;
 
             let assistant_msg = choice.message;
 
@@ -213,9 +213,8 @@ impl CodestralAgent {
 
                     for tc in tool_calls {
                         let tool_name = tc.function.name;
-                        let args: serde_json::Value =
-                            serde_json::from_str(&tc.function.arguments)
-                                .unwrap_or_else(|_| json!({ "raw": tc.function.arguments }));
+                        let args: serde_json::Value = serde_json::from_str(&tc.function.arguments)
+                            .unwrap_or_else(|_| json!({ "raw": tc.function.arguments }));
 
                         if let Some(ref cb) = self.on_tool_call {
                             cb(&tool_name, &args);
@@ -235,11 +234,8 @@ impl CodestralAgent {
                             cb(&tool_name, &tool_result);
                         }
 
-                        self.messages.push(ChatMessage::tool(
-                            tc.id,
-                            tool_result,
-                            Some(tool_name),
-                        ));
+                        self.messages
+                            .push(ChatMessage::tool(tc.id, tool_result, Some(tool_name)));
                     }
 
                     continue;

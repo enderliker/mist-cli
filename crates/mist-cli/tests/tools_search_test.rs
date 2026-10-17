@@ -16,12 +16,7 @@ async fn test_list_files_and_noise_filtering() {
     fs::write(ws.join("src/main.rs"), "fn main() {}").unwrap();
     fs::write(ws.join("node_modules/fake/index.js"), "module.exports = 1;").unwrap();
 
-    let list_res = execute_list_files(
-        json!({ "path": ".", "recursive": true }),
-        ws,
-        &None,
-    )
-    .await;
+    let list_res = execute_list_files(json!({ "path": ".", "recursive": true }), ws, &None).await;
 
     assert!(list_res.contains("src/main.rs") || list_res.contains("main.rs"));
     assert!(!list_res.contains("node_modules"));
@@ -54,5 +49,8 @@ async fn test_search_files_regex_and_line_numbers() {
     assert_eq!(res_json["matches_count"], 1);
     let match_entry = &res_json["matches"][0];
     assert_eq!(match_entry["line"], 2);
-    assert!(match_entry["text"].as_str().unwrap().contains("target pattern"));
+    assert!(match_entry["text"]
+        .as_str()
+        .unwrap()
+        .contains("target pattern"));
 }

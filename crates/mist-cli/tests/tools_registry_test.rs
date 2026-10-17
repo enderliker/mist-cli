@@ -26,7 +26,9 @@ async fn test_registry_execute_dispatch() {
     let ws = tmp.path();
 
     // 1. Dispatching unknown tool returns clean error
-    let unknown_res = registry.execute_tool("unknown_tool", json!({}), ws, &None).await;
+    let unknown_res = registry
+        .execute_tool("unknown_tool", json!({}), ws, &None)
+        .await;
     assert!(unknown_res.contains("Tool 'unknown_tool' is not registered in the system."));
 
     // 2. Dispatching known tool (write_file + read_file)

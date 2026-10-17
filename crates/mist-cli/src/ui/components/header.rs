@@ -27,7 +27,9 @@ pub fn render_header(
     let line1 = Line::from(vec![
         Span::styled(
             left_title,
-            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::raw(spaces),
         Span::styled(right_ver, Style::default().fg(Color::DarkGray)),

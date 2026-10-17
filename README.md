@@ -1,5 +1,8 @@
 # mist-cli (`mist`)
 
+[![CI](https://github.com/enderliker/mist-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/enderliker/mist-cli/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 High-performance, interactive developer CLI powered by **Codestral** (`codestral-latest`), Mistral AI's specialized code generation and reasoning model. Written in 100% native Rust.
 
 Equipped with an autonomous agent and native function calling to inspect, search, read, surgically edit files, and safely execute commands directly within an isolated Linux namespace sandbox (Bubblewrap).

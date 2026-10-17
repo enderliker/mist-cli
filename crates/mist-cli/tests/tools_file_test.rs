@@ -107,12 +107,7 @@ async fn test_sensitive_file_protections() {
     assert!(ws.join(".env").exists());
 
     // Sensitive read with approval succeeds
-    let read_approved = execute_read_file(
-        json!({ "path": ".env" }),
-        ws,
-        &Some(approved_cb),
-    )
-    .await;
+    let read_approved = execute_read_file(json!({ "path": ".env" }), ws, &Some(approved_cb)).await;
     assert!(read_approved.contains("SECRET_KEY=approved"));
 }
 
@@ -121,11 +116,6 @@ async fn test_path_traversal_rejection() {
     let tmp = tempdir().expect("create temp dir");
     let ws = tmp.path();
 
-    let res = execute_read_file(
-        json!({ "path": "../outside.txt" }),
-        ws,
-        &None,
-    )
-    .await;
+    let res = execute_read_file(json!({ "path": "../outside.txt" }), ws, &None).await;
     assert!(res.contains("outside the allowed workspace"));
 }

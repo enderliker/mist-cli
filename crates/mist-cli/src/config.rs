@@ -21,10 +21,22 @@ pub struct MistralCliConfig {
 pub fn resolve_config_from_map(
     env: &HashMap<String, String>,
 ) -> Result<MistralCliConfig, ConfigError> {
-    let mistral_key = env.get("MISTRAL_API_KEY").map(|s| s.trim()).filter(|s| !s.is_empty());
-    let codestral_key = env.get("CODESTRAL_API_KEY").map(|s| s.trim()).filter(|s| !s.is_empty());
-    let custom_base_url = env.get("MISTRAL_BASE_URL").map(|s| s.trim()).filter(|s| !s.is_empty());
-    let custom_model = env.get("MISTRAL_MODEL").map(|s| s.trim()).filter(|s| !s.is_empty());
+    let mistral_key = env
+        .get("MISTRAL_API_KEY")
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
+    let codestral_key = env
+        .get("CODESTRAL_API_KEY")
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
+    let custom_base_url = env
+        .get("MISTRAL_BASE_URL")
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
+    let custom_model = env
+        .get("MISTRAL_MODEL")
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
 
     if mistral_key.is_none() && codestral_key.is_none() {
         return Err(ConfigError::MissingApiKey);

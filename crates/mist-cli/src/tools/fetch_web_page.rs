@@ -123,7 +123,9 @@ pub async fn execute_fetch_web_page(
 
     let api_key = match api_key_override {
         Some(k) if !k.trim().is_empty() => Some(k.trim().to_string()),
-        _ => std::env::var("TAVILY_API_KEY").ok().filter(|k| !k.trim().is_empty()),
+        _ => std::env::var("TAVILY_API_KEY")
+            .ok()
+            .filter(|k| !k.trim().is_empty()),
     };
 
     let client = match reqwest::Client::builder()

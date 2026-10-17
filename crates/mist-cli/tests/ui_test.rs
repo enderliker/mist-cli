@@ -128,7 +128,10 @@ fn test_ui_security_prompt_modal() {
     let mut app = App::new(&agent, "0.3.0-beta.1", "/workspace/test");
 
     let (resp_tx, mut resp_rx) = oneshot::channel();
-    app.confirm_state = Some(("execute sandboxed command 'cargo test'".to_string(), resp_tx));
+    app.confirm_state = Some((
+        "execute sandboxed command 'cargo test'".to_string(),
+        resp_tx,
+    ));
 
     let backend = TestBackend::new(100, 24);
     let mut terminal = Terminal::new(backend).expect("create test terminal");
@@ -159,6 +162,6 @@ fn test_ui_security_prompt_modal() {
         1,
     );
 
-    assert_eq!(resp_rx.try_recv().unwrap(), true);
+    assert!(resp_rx.try_recv().unwrap());
     assert!(app.confirm_state.is_none());
 }

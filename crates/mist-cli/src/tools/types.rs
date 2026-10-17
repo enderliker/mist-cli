@@ -63,9 +63,7 @@ pub fn is_sensitive_file(file_path: &str, workspace_dir: &Path) -> bool {
                 if lower == ".env" || lower.starts_with(".env.") {
                     return true;
                 }
-                if lower.ends_with(".pem")
-                    || lower.ends_with(".key")
-                    || lower.starts_with("id_rsa")
+                if lower.ends_with(".pem") || lower.ends_with(".key") || lower.starts_with("id_rsa")
                 {
                     return true;
                 }

@@ -24,7 +24,10 @@ pub async fn execute_write_file(
         }
     };
 
-    let overwrite = args.get("overwrite").and_then(|v| v.as_bool()).unwrap_or(true);
+    let overwrite = args
+        .get("overwrite")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
 
     let resolved_path = workspace_dir.join(raw_path);
 
@@ -95,7 +98,7 @@ pub async fn execute_write_file(
     }
 
     let lines = content.lines().count();
-    let bytes = content.as_bytes().len();
+    let bytes = content.len();
 
     json!({
         "file": raw_path,

@@ -12,7 +12,9 @@ pub fn render_security_prompt(frame: &mut Frame, area: Rect, description: &str) 
 
     let line1 = Line::from(vec![Span::styled(
         "⚠️  Security Authorization Required",
-        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD),
     )]);
 
     let line2 = Line::from(vec![Span::raw(format!(
@@ -24,7 +26,9 @@ pub fn render_security_prompt(frame: &mut Frame, area: Rect, description: &str) 
         Span::raw("Authorize? Press "),
         Span::styled(
             "[y]",
-            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" to confirm, "),
         Span::styled(

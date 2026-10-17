@@ -1,6 +1,4 @@
-use super::sandbox::bubblewrap::{
-    is_bubblewrap_available, run_in_bubblewrap, BubblewrapOptions,
-};
+use super::sandbox::bubblewrap::{is_bubblewrap_available, run_in_bubblewrap, BubblewrapOptions};
 use super::types::ConfirmCallback;
 use serde_json::json;
 use std::path::Path;

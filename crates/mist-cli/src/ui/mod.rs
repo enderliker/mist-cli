@@ -1,9 +1,9 @@
 pub mod app;
 pub mod components;
 
+use crate::agent::CodestralAgent;
 use app::{App, AppEvent};
 use components::MessageRole;
-use crate::agent::CodestralAgent;
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event};
 use crossterm::execute;
 use crossterm::terminal::{
@@ -111,14 +111,14 @@ pub async fn run_tui(mut agent: CodestralAgent) -> Result<(), Box<dyn std::error
     let term_event_tx = event_tx.clone();
     std::thread::Builder::new()
         .name("crossterm-reader".to_string())
-        .spawn(move || loop {
-            match crossterm::event::read() {
-                Ok(ev) => {
-                    if term_event_tx.blocking_send(AppEvent::TermEvent(ev)).is_err() {
-                        break;
-                    }
+        .spawn(move || {
+            while let Ok(ev) = crossterm::event::read() {
+                if term_event_tx
+                    .blocking_send(AppEvent::TermEvent(ev))
+                    .is_err()
+                {
+                    break;
                 }
-                Err(_) => break,
             }
         })?;
 
