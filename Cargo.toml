@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "crates/mistral-client",
-    "crates/mistral-cli",
+    "crates/mist-cli",
 ]
 resolver = "2"
 

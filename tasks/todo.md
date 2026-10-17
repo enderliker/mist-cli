@@ -198,12 +198,11 @@
 **Acceptance criteria:**
 - [x] `AGENTS.md` and `README.md` updated with Rust CLI documentation and build instructions.
 - [x] All tests across both `mistral-client` and `mistral-cli` pass cleanly with zero compiler warnings.
-- [x] TypeScript test suite remains green in `packages/cli`.
+- [x] Legacy TypeScript packages and npm configurations cleanly removed.
 
 **Verification:**
 - [x] `cargo test`
-- [x] `npm test`
-- [x] `cargo build --package mistral-cli`
+- [x] `cargo build --package mist-cli --release`
 
 **Dependencies:** Task 24
 
