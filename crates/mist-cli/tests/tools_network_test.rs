@@ -1,5 +1,6 @@
 use mist_cli::tools::execute_command::execute_execute_command;
 use mist_cli::tools::fetch_web_page::{clean_html_to_markdown, execute_fetch_web_page};
+use mist_cli::tools::sandbox::bubblewrap::is_bubblewrap_available;
 use mist_cli::tools::types::ConfirmCallback;
 use mist_cli::tools::web_search::execute_web_search;
 use serde_json::json;
@@ -16,6 +17,11 @@ async fn test_execute_command_confirmation_and_execution() {
     // 1. Missing command error
     let res_empty = execute_execute_command(json!({ "command": "" }), ws, &None).await;
     assert!(res_empty.contains("required"));
+
+    if !is_bubblewrap_available(None) {
+        eprintln!("Bubblewrap not available on this environment, skipping command execution test.");
+        return;
+    }
 
     // 2. Denied when no confirm callback
     let res_no_confirm =
