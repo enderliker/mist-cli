@@ -19,28 +19,42 @@ Instructions, architecture principles, and developer conventions for AI agents w
 ## 2. Architecture Map
 
 ```text
-src/
-├── index.ts        # CLI entry point (shebang #!/usr/bin/env node)
-├── cli.ts          # CLI argument parser, REPL interface, and one-shot runner
-├── agent.ts        # CodestralAgent orchestrator and tool execution loop
-├── config.ts       # Credential resolution (MISTRAL_API_KEY vs CODESTRAL_API_KEY)
-├── ui/             # Modern Ink React-based TUI components
-│   ├── App.tsx           # TUI application root and event coordinator
-│   ├── components/       # Header, MessageList, InputBar, SecurityPrompt, StatusBar
-│   └── index.tsx         # TUI entry point
-└── tools/
-    ├── types.ts          # Tool interfaces and Mistral schema definitions
-    ├── read-file.ts      # File reader with path traversal & sensitive file checks
-    ├── list-files.ts     # Workspace directory explorer
-    ├── write-file.ts     # Safe file writer with parent directory creation
-    ├── edit-file.ts      # Surgical search & replace text editor
-    ├── search-files.ts   # Workspace grep and code pattern search
-    ├── execute-command.ts# Sandboxed command execution tool
-    ├── web-search.ts     # Real-time web search tool via Tavily API
-    ├── fetch-web-page.ts # Web page text/markdown content extractor
-    ├── sandbox/
-    │   └── bubblewrap.ts # Linux namespace sandbox engine (bwrap)
-    └── index.ts          # Tool registry and dispatcher
+packages/cli/
+├── src/
+│   ├── index.ts        # CLI entry point (shebang #!/usr/bin/env node)
+│   ├── cli.ts          # CLI argument parser, REPL interface, and one-shot runner
+│   ├── agent.ts        # CodestralAgent orchestrator and tool execution loop
+│   ├── config.ts       # Credential resolution (MISTRAL_API_KEY vs CODESTRAL_API_KEY)
+│   ├── ui/             # Modern Ink React-based TUI components
+│   │   ├── App.tsx           # TUI application root and event coordinator
+│   │   ├── components/       # Header, MessageList, InputBar, SecurityPrompt, StatusBar
+│   │   └── index.tsx         # TUI entry point
+│   └── tools/
+│       ├── types.ts          # Tool interfaces and Mistral schema definitions
+│       ├── read-file.ts      # File reader with path traversal & sensitive file checks
+│       ├── list-files.ts     # Workspace directory explorer
+│       ├── write-file.ts     # Safe file writer with parent directory creation
+│       ├── edit-file.ts      # Surgical search & replace text editor
+│       ├── search-files.ts   # Workspace grep and code pattern search
+│       ├── execute-command.ts# Sandboxed command execution tool
+│       ├── web-search.ts     # Real-time web search tool via Tavily API
+│       ├── fetch-web-page.ts # Web page text/markdown content extractor
+│       ├── sandbox/
+│       │   └── bubblewrap.ts # Linux namespace sandbox engine (bwrap)
+│       └── index.ts          # Tool registry and dispatcher
+└── tests/              # Vitest test suites (118 tests)
+
+crates/
+├── mistral-client/     # Native Rust Mistral API client SDK
+│   ├── Cargo.toml      # Crate configuration
+│   ├── src/            # Client, Models, and Error implementations
+│   └── tests/          # Unit and WireMock integration tests (12 tests)
+└── mistral-cli/        # Native Rust CLI application (Codestral agent, tools, TUI & REPL)
+    ├── Cargo.toml      # Crate configuration
+    ├── src/            # Agent orchestrator, tools, config, CLI, UI (Ratatui), and REPL
+    │   ├── ui/         # Ratatui TUI components (Header, MessageList, InputBar, SecurityPrompt, StatusBar)
+    │   └── tools/      # File, search, and sandboxed execution tools
+    └── tests/          # Integration and unit tests (28 tests)
 ```
 
 ### Key Components
@@ -106,6 +120,9 @@ All modifications to tools and CLI interactions must adhere to these security re
   # Compile TypeScript to verify types
   npm run build
 
-  # Run full test suite
+  # Run TypeScript test suites
   npm test
+
+  # Run Rust crate test suites
+  cargo test
   ```

@@ -26,6 +26,7 @@ export interface AgentOptions {
   workspaceDir?: string;
   systemPrompt?: string;
   maxIterations?: number;
+  maxHistoryMessages?: number;
   onToolCall?: (toolName: string, args: Record<string, unknown>) => void;
   onToolResult?: (toolName: string, result: string) => void;
   onConfirmAction?: (description: string) => Promise<boolean> | boolean;
@@ -87,6 +88,7 @@ Security Principles:
 export const DEFAULT_SYSTEM_PROMPT = buildSystemPrompt();
 
 export const MAX_TOOL_ITERATIONS = 5;
+export const DEFAULT_MAX_HISTORY_MESSAGES = 30;
 
 export function extractTextContent(content: unknown): string | null {
   if (typeof content === "string") return content;
@@ -115,6 +117,7 @@ export class CodestralAgent {
   private workspaceDir: string;
   private systemPrompt: string;
   private maxIterations: number;
+  private maxHistoryMessages: number;
   private messages: ChatMessage[] = [];
   private onToolCall?: (toolName: string, args: Record<string, unknown>) => void;
   private onToolResult?: (toolName: string, result: string) => void;
@@ -127,6 +130,7 @@ export class CodestralAgent {
     this.systemPrompt =
       options.systemPrompt ?? buildSystemPrompt({ workspaceDir: this.workspaceDir });
     this.maxIterations = options.maxIterations ?? MAX_TOOL_ITERATIONS;
+    this.maxHistoryMessages = options.maxHistoryMessages ?? DEFAULT_MAX_HISTORY_MESSAGES;
     this.onToolCall = options.onToolCall;
     this.onToolResult = options.onToolResult;
     this.onConfirmAction = options.onConfirmAction;
@@ -157,7 +161,37 @@ export class CodestralAgent {
     this.onConfirmAction = callback;
   }
 
+  public setToolCallbacks(callbacks: {
+    onToolCall?: (toolName: string, args: Record<string, unknown>) => void;
+    onToolResult?: (toolName: string, result: string) => void;
+  }): void {
+    this.onToolCall = callbacks.onToolCall;
+    this.onToolResult = callbacks.onToolResult;
+  }
+
+  private pruneHistory(): void {
+    // shortcut: sliding window by message turn count, upgrade to token-based windowing if needed
+    if (this.messages.length <= this.maxHistoryMessages + 1) {
+      return;
+    }
+
+    const systemMessage = this.messages[0];
+    const tail = this.messages.slice(1);
+    const targetStartIndex = tail.length - this.maxHistoryMessages;
+
+    // Advance to nearest user message boundary to avoid splitting tool call chains
+    let sliceIndex = targetStartIndex;
+    while (sliceIndex < tail.length && tail[sliceIndex].role !== "user") {
+      sliceIndex++;
+    }
+
+    if (sliceIndex < tail.length) {
+      this.messages = [systemMessage, ...tail.slice(sliceIndex)];
+    }
+  }
+
   public async chat(userInput: string): Promise<string> {
+    this.pruneHistory();
     this.messages.push({
       role: "user",
       content: userInput,
@@ -238,6 +272,7 @@ export class CodestralAgent {
         content: finalContent,
       });
 
+      this.pruneHistory();
       return finalContent;
     }
 
@@ -246,6 +281,7 @@ export class CodestralAgent {
       role: "assistant",
       content: warning,
     });
+    this.pruneHistory();
     return warning;
   }
 }

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { MistralTool, ToolExecutor } from "./types.js";
-import { isPathInside } from "./read-file.js";
+import { MistralTool, ToolExecutor, ConfirmCallback } from "./types.js";
+import { isPathInside, isSensitiveFile } from "./read-file.js";
 
 export interface WriteFileArgs {
   path: string;
@@ -38,7 +38,8 @@ export const writeFileToolDefinition: MistralTool = {
 
 export async function executeWriteFile(
   args: WriteFileArgs,
-  workspaceDir: string = process.cwd()
+  workspaceDir: string = process.cwd(),
+  onConfirm?: ConfirmCallback
 ): Promise<string> {
   if (!args || typeof args.path !== "string" || args.path.trim() === "") {
     return JSON.stringify({
@@ -60,6 +61,21 @@ export async function executeWriteFile(
     return JSON.stringify({
       error: `Access denied: Path '${rawPath}' is outside the allowed workspace.`,
     });
+  }
+
+  if (isSensitiveFile(rawPath, resolvedBase)) {
+    if (!onConfirm) {
+      return JSON.stringify({
+        error: `Access denied: Writing to sensitive file '${rawPath}' requires interactive confirmation.`,
+      });
+    }
+
+    const allowed = await onConfirm(`write to sensitive file '${rawPath}'`);
+    if (!allowed) {
+      return JSON.stringify({
+        error: `Write cancelled: User denied permission to write to sensitive file '${rawPath}'.`,
+      });
+    }
   }
 
   try {

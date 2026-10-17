@@ -149,6 +149,20 @@ codestral> /exit
 Goodbye!
 ```
 
+### Running the Native Rust CLI
+You can also run the native Rust binary directly:
+
+```bash
+# Build the Rust CLI binary
+cargo build --package mistral-cli --release
+
+# Run one-shot mode via cargo
+cargo run --package mistral-cli -- "What does src/config.ts do?"
+
+# Start the interactive Rust REPL
+cargo run --package mistral-cli
+```
+
 ---
 
 ## REPL Commands
@@ -164,15 +178,14 @@ Goodbye!
 
 ## Development & Testing
 
-Run unit tests with Vitest:
+Run unit and integration tests across both ecosystems:
 
 ```bash
-# Run all tests
+# Run all TypeScript tests (118 tests)
 npm test
 
-# Run a specific test suite
-npm test -- tests/execute-command.test.ts
-npm test -- tests/bubblewrap.test.ts
+# Run all Rust tests (40 tests across mistral-client and mistral-cli)
+cargo test
 ```
 
 ---
@@ -181,31 +194,23 @@ npm test -- tests/bubblewrap.test.ts
 
 ```text
 mistral-cli/
-├── src/
-│   ├── index.ts              # CLI binary entry point (#!/usr/bin/env node)
-│   ├── cli.ts                # Argument parser, One-Shot runner, and REPL
-│   ├── agent.ts              # Autonomous agent and tool calling loop
-│   ├── config.ts             # Credential and endpoint resolution
-│   └── tools/
-│       ├── types.ts          # Tool contracts and Mistral schema types
-│       ├── read-file.ts      # Safe file reading and sensitive file checks
-│       ├── list-files.ts     # Workspace directory explorer
-│       ├── write-file.ts     # File creation and updates
-│       ├── execute-command.ts# Sandboxed command execution tool
-│       ├── sandbox/
-│       │   └── bubblewrap.ts # Linux namespace sandbox engine (bwrap)
-│       └── index.ts          # Central tool registry and dispatcher
-├── tests/
-│   ├── config.test.ts        # Configuration tests
-│   ├── read-file.test.ts     # File reader and security tests
-│   ├── list-files.test.ts    # Directory listing tests
-│   ├── write-file.test.ts    # File writer tests
-│   ├── bubblewrap.test.ts    # Bubblewrap engine tests
-│   ├── execute-command.test.ts # Sandboxed command execution tests
-│   ├── agent.test.ts         # Agent tool loop tests
-│   └── cli.test.ts           # CLI argument and REPL tests
-├── package.json
-├── tsconfig.json
+├── packages/
+│   └── cli/                  # TypeScript CLI package (Ink TUI & Agent)
+│       ├── src/              # CLI entrypoint, agent loop, tools, and UI
+│       ├── tests/            # Vitest test suites (118 tests)
+│       ├── package.json      # CLI dependencies (Ink, React, Mistral)
+│       └── tsconfig.json     # NodeNext TypeScript configuration
+├── crates/
+│   ├── mistral-client/       # Native Rust Mistral API SDK
+│   │   ├── src/              # Client, Models, and Error handling
+│   │   ├── tests/            # WireMock and serialization test suites (12 tests)
+│   │   └── Cargo.toml        # Rust dependencies (reqwest, serde, tokio)
+│   └── mistral-cli/          # Native Rust CLI application (Agent, Tools, Ratatui TUI & REPL)
+│       ├── src/              # Agent orchestrator, tools, config, CLI, TUI and REPL
+│       ├── tests/            # Integration and unit tests (28 tests)
+│       └── Cargo.toml        # Binary crate configuration
+├── Cargo.toml                # Root Cargo workspace coordinator
+├── package.json              # Root npm workspace coordinator
 └── README.md
 ```
 

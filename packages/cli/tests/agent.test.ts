@@ -264,5 +264,102 @@ describe("CodestralAgent", () => {
     expect(tools).toContain("fetch_web_page");
     expect(tools.length).toBe(8);
   });
+
+  it("updates tool callbacks dynamically via setToolCallbacks", async () => {
+    const toolCallMock = {
+      id: "call_t1",
+      type: "function",
+      function: {
+        name: "read_file",
+        arguments: JSON.stringify({ path: "sample.txt" }),
+      },
+    };
+
+    const mockComplete = vi
+      .fn()
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              content: null,
+              toolCalls: [toolCallMock],
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              content: "Done reading",
+              toolCalls: null,
+            },
+          },
+        ],
+      });
+
+    const mockClient = { chat: { complete: mockComplete } } as any;
+    const agent = new CodestralAgent({
+      client: mockClient,
+      config: dummyConfig,
+      workspaceDir: tempDir,
+    });
+
+    const calls: string[] = [];
+    const results: string[] = [];
+
+    agent.setToolCallbacks({
+      onToolCall: (name) => calls.push(name),
+      onToolResult: (name) => results.push(name),
+    });
+
+    await agent.chat("Read sample");
+
+    expect(calls).toEqual(["read_file"]);
+    expect(results).toEqual(["read_file"]);
+  });
+
+  it("prunes conversation history to maxHistoryMessages without splitting turn boundaries", async () => {
+    const mockClient = {
+      chat: {
+        complete: vi.fn().mockImplementation(async ({ messages }) => {
+          const lastMsg = messages[messages.length - 1];
+          return {
+            choices: [
+              {
+                message: {
+                  role: "assistant",
+                  content: `Echo: ${lastMsg.content}`,
+                  toolCalls: null,
+                },
+              },
+            ],
+          };
+        }),
+      },
+    } as any;
+
+    const agent = new CodestralAgent({
+      client: mockClient,
+      config: dummyConfig,
+      workspaceDir: tempDir,
+      maxHistoryMessages: 4, // Keep system prompt + up to 4 recent messages
+    });
+
+    // Each chat turn appends 1 user + 1 assistant message (2 messages)
+    await agent.chat("Turn 1"); // 1 system + 2 = 3
+    await agent.chat("Turn 2"); // 1 system + 4 = 5 -> pruned to 1 system + 4 = 5
+    await agent.chat("Turn 3"); // pruned before turn 3: starts at user message boundary
+
+    const history = agent.getHistory();
+    expect(history[0].role).toBe("system");
+    // Ensure all messages after system prompt begin with a user message
+    expect(history[1].role).toBe("user");
+    // Total messages should be <= maxHistoryMessages + 2 (turn 3 just added 2)
+    expect(history.length).toBeLessThanOrEqual(6);
+    expect(history[history.length - 1].content).toBe("Echo: Turn 3");
+  });
 });
 

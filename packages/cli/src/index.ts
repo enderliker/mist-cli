@@ -9,6 +9,6 @@ main()
     }
   })
   .catch((err) => {
-    console.error("Error fatal:", err);
+    console.error("Fatal error:", err);
     process.exit(1);
   });

@@ -40,6 +40,20 @@ export const App: React.FC<AppProps> = ({ agent, version }) => {
         setConfirmState({ description, resolve });
       });
     });
+
+    agent.setToolCallbacks?.({
+      onToolCall: (name: string, args: Record<string, unknown>) => {
+        setLoadingText(`Running tool '${name}'...`);
+        addMessage(
+          "tool_call",
+          `Running '${name}' with arguments: ${JSON.stringify(args)}`
+        );
+      },
+      onToolResult: (name: string) => {
+        setLoadingText("Codestral is thinking...");
+        addMessage("tool_result", `'${name}' completed.`);
+      },
+    });
   }, [agent]);
 
   useInput((input, key) => {
@@ -104,23 +118,6 @@ export const App: React.FC<AppProps> = ({ agent, version }) => {
       setIsLoading(true);
       setLoadingText("Codestral is thinking...");
 
-      // Wire up tool events
-      const prevOnToolCall = agent["onToolCall"];
-      const prevOnToolResult = agent["onToolResult"];
-
-      agent["onToolCall"] = (name: string, args: Record<string, unknown>) => {
-        setLoadingText(`Running tool '${name}'...`);
-        addMessage(
-          "tool_call",
-          `Running '${name}' with arguments: ${JSON.stringify(args)}`
-        );
-      };
-
-      agent["onToolResult"] = (name: string) => {
-        setLoadingText("Codestral is thinking...");
-        addMessage("tool_result", `'${name}' completed.`);
-      };
-
       (async () => {
         try {
           const reply = await agent.chat(trimmed);
@@ -129,8 +126,6 @@ export const App: React.FC<AppProps> = ({ agent, version }) => {
           const msg = err instanceof Error ? err.message : String(err);
           addMessage("error", msg);
         } finally {
-          agent["onToolCall"] = prevOnToolCall;
-          agent["onToolResult"] = prevOnToolResult;
           setIsLoading(false);
         }
       })();

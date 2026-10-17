@@ -1,5 +1,8 @@
 node_modules/
+packages/*/node_modules/
 dist/
+packages/*/dist/
+target/
 .env
 *.log
 .DS_Store
@@ -8,3 +11,4 @@ graphify-out/
 .codex/
 .github/
 .agents
+handoff.md

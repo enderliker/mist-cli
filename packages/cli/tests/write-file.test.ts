@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -104,5 +104,41 @@ describe("Tool: write_file", () => {
     );
     const result = JSON.parse(rawResult);
     expect(result.success).toBe(true);
+  });
+
+  it("blocks writing to sensitive files when no confirm callback is provided", async () => {
+    const rawResult = await executeWriteFile(
+      { path: ".env", content: "SECRET=123" },
+      tempDir
+    );
+    const result = JSON.parse(rawResult);
+    expect(result.error).toMatch(/Access denied.*sensitive file.*requires interactive confirmation/i);
+    expect(fs.existsSync(path.join(tempDir, ".env"))).toBe(false);
+  });
+
+  it("cancels writing to sensitive files when user denies permission", async () => {
+    const onConfirm = vi.fn().mockResolvedValue(false);
+    const rawResult = await executeWriteFile(
+      { path: "id_rsa", content: "PRIVATE KEY" },
+      tempDir,
+      onConfirm
+    );
+    const result = JSON.parse(rawResult);
+    expect(onConfirm).toHaveBeenCalled();
+    expect(result.error).toMatch(/User denied permission.*sensitive file/i);
+    expect(fs.existsSync(path.join(tempDir, "id_rsa"))).toBe(false);
+  });
+
+  it("allows writing to sensitive files when user grants permission", async () => {
+    const onConfirm = vi.fn().mockResolvedValue(true);
+    const rawResult = await executeWriteFile(
+      { path: ".env.production", content: "API_KEY=prod-secret" },
+      tempDir,
+      onConfirm
+    );
+    const result = JSON.parse(rawResult);
+    expect(onConfirm).toHaveBeenCalled();
+    expect(result.success).toBe(true);
+    expect(fs.readFileSync(path.join(tempDir, ".env.production"), "utf-8")).toBe("API_KEY=prod-secret");
   });
 });
