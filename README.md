@@ -12,11 +12,13 @@ Equipped with an autonomous agent and native function calling to inspect, read, 
 - **Dual Endpoint Auto-Resolution**:
   - `MISTRAL_API_KEY` connects to `https://api.mistral.ai`.
   - `CODESTRAL_API_KEY` connects to `https://codestral.mistral.ai`.
-- **Local Workspace Tools**:
+- **Local Workspace & Web Tools**:
   - `list_files`: Inspect workspace file trees and directory structures with automated exclusion of noise directories (`node_modules`, `.git`, `dist`).
   - `read_file`: Read entire files or specific line slices with a 100 KB safety limit.
   - `write_file`: Create or update project files with recursive directory creation.
   - `execute_command`: Run shell commands and tests inside an isolated Linux namespace sandbox.
+  - `web_search`: Search the live web for up-to-date documentation, APIs, and technical references via Tavily API.
+- **Modern Ink React-based TUI**: Rich terminal interface with flexbox layout, live input cursor, animated thinking spinner, and interactive security dialogs.
 - **Security & Guardrails**:
   - **Native OS Sandboxing (Bubblewrap)**: Commands run in unprivileged Linux namespaces (`bwrap`) with read-only system mounts, isolated `/tmp`, network unshared by default, and strict containment to the workspace.
   - Path traversal protection restricting all operations to the workspace root.

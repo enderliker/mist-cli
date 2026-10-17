@@ -54,6 +54,7 @@ describe("CodestralAgent", () => {
     expect(prompt).toContain(process.version);
     expect(prompt).toContain("execute_command");
     expect(prompt).toContain("allow_network: true");
+    expect(prompt).toContain("web_search");
   });
 
   it("responds directly when model triggers no tool calls", async () => {

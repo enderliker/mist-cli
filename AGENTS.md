@@ -24,12 +24,17 @@ src/
 ├── cli.ts          # CLI argument parser, REPL interface, and one-shot runner
 ├── agent.ts        # CodestralAgent orchestrator and tool execution loop
 ├── config.ts       # Credential resolution (MISTRAL_API_KEY vs CODESTRAL_API_KEY)
+├── ui/             # Modern Ink React-based TUI components
+│   ├── App.tsx           # TUI application root and event coordinator
+│   ├── components/       # Header, MessageList, InputBar, SecurityPrompt, StatusBar
+│   └── index.tsx         # TUI entry point
 └── tools/
     ├── types.ts          # Tool interfaces and Mistral schema definitions
     ├── read-file.ts      # File reader with path traversal & sensitive file checks
     ├── list-files.ts     # Workspace directory explorer
     ├── write-file.ts     # Safe file writer with parent directory creation
     ├── execute-command.ts# Sandboxed command execution tool
+    ├── web-search.ts     # Real-time web search tool via Tavily API
     ├── sandbox/
     │   └── bubblewrap.ts # Linux namespace sandbox engine (bwrap)
     └── index.ts          # Tool registry and dispatcher

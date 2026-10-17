@@ -3,12 +3,14 @@ import { readFileToolExecutor } from "./read-file.js";
 import { listFilesToolExecutor } from "./list-files.js";
 import { writeFileToolExecutor } from "./write-file.js";
 import { executeCommandToolExecutor } from "./execute-command.js";
+import { webSearchToolExecutor } from "./web-search.js";
 
 export * from "./types.js";
 export * from "./read-file.js";
 export * from "./list-files.js";
 export * from "./write-file.js";
 export * from "./execute-command.js";
+export * from "./web-search.js";
 export * from "./sandbox/bubblewrap.js";
 
 const toolRegistry = new Map<string, ToolExecutor<any>>();
@@ -17,6 +19,7 @@ toolRegistry.set("read_file", readFileToolExecutor);
 toolRegistry.set("list_files", listFilesToolExecutor);
 toolRegistry.set("write_file", writeFileToolExecutor);
 toolRegistry.set("execute_command", executeCommandToolExecutor);
+toolRegistry.set("web_search", webSearchToolExecutor);
 
 export function getAllToolDefinitions(): MistralTool[] {
   return Array.from(toolRegistry.values()).map((tool) => tool.definition);
