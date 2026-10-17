@@ -2,6 +2,7 @@ import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { CodestralAgent } from "./agent.js";
 import { resolveConfig, MistralCliConfig } from "./config.js";
+import { startTui } from "./ui/index.js";
 
 export const VERSION = "0.2.0-beta.1";
 
@@ -135,6 +136,11 @@ export function handleReplCommand(
 }
 
 export async function runRepl(agent: CodestralAgent): Promise<void> {
+  if (process.stdin.isTTY) {
+    await startTui(agent, VERSION);
+    return;
+  }
+
   const config = agent.getConfig();
   console.log("\x1b[32m" + "=".repeat(60) + "\x1b[0m");
   console.log(`\x1b[1mMistral Codestral CLI\x1b[0m (v${VERSION})`);
