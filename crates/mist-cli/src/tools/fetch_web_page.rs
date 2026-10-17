@@ -1,69 +1,75 @@
 use regex::Regex;
 use serde_json::json;
+use std::sync::LazyLock;
 use std::time::Duration;
 
 pub const DEFAULT_TAVILY_EXTRACT_ENDPOINT: &str = "https://api.tavily.com/extract";
+
+static TITLE_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)<title[^>]*>([\s\S]*?)</title>").unwrap());
+
+static REMOVE_TAG_REGEXES: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    vec![
+        Regex::new(r"(?is)<script\b[^>]*>.*?</script>").unwrap(),
+        Regex::new(r"(?is)<style\b[^>]*>.*?</style>").unwrap(),
+        Regex::new(r"(?is)<noscript\b[^>]*>.*?</noscript>").unwrap(),
+        Regex::new(r"(?is)<svg\b[^>]*>.*?</svg>").unwrap(),
+        Regex::new(r"(?is)<nav\b[^>]*>.*?</nav>").unwrap(),
+        Regex::new(r"(?is)<header\b[^>]*>.*?</header>").unwrap(),
+        Regex::new(r"(?is)<footer\b[^>]*>.*?</footer>").unwrap(),
+    ]
+});
+
+static H1_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)<h1[^>]*>([\s\S]*?)</h1>").unwrap());
+static H2_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)<h2[^>]*>([\s\S]*?)</h2>").unwrap());
+static H3_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)<h3[^>]*>([\s\S]*?)</h3>").unwrap());
+static H46_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)<h[4-6][^>]*>([\s\S]*?)</h[4-6]>").unwrap());
+static LI_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)<li[^>]*>([\s\S]*?)</li>").unwrap());
+static P_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)<p[^>]*>([\s\S]*?)</p>").unwrap());
+static BR_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)<br\s*/?>").unwrap());
+static HR_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)<hr\s*/?>").unwrap());
+static TAGS_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"<[^>]+>").unwrap());
+static WS_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"[ \t]+").unwrap());
 
 pub fn clean_html_to_markdown(html: &str) -> String {
     let mut text = html.to_string();
 
     // Extract title if present
-    let title_regex = Regex::new(r"(?i)<title[^>]*>([\s\S]*?)</title>").unwrap();
-    let title = title_regex
+    let title = TITLE_REGEX
         .captures(&text)
         .and_then(|cap| cap.get(1))
         .map(|m| m.as_str().trim().to_string())
         .unwrap_or_default();
 
     // Remove head, scripts, styles, noscript, svg, nav, header, footer
-    let remove_tags = [
-        r"(?is)<script\b[^>]*>.*?</script>",
-        r"(?is)<style\b[^>]*>.*?</style>",
-        r"(?is)<noscript\b[^>]*>.*?</noscript>",
-        r"(?is)<svg\b[^>]*>.*?</svg>",
-        r"(?is)<nav\b[^>]*>.*?</nav>",
-        r"(?is)<header\b[^>]*>.*?</header>",
-        r"(?is)<footer\b[^>]*>.*?</footer>",
-    ];
-
-    for pat in remove_tags {
-        if let Ok(re) = Regex::new(pat) {
-            text = re.replace_all(&text, " ").to_string();
-        }
+    for re in REMOVE_TAG_REGEXES.iter() {
+        text = re.replace_all(&text, " ").to_string();
     }
 
     // Headings
-    if let Ok(re) = Regex::new(r"(?i)<h1[^>]*>([\s\S]*?)</h1>") {
-        text = re.replace_all(&text, "\n\n# $1\n\n").to_string();
-    }
-    if let Ok(re) = Regex::new(r"(?i)<h2[^>]*>([\s\S]*?)</h2>") {
-        text = re.replace_all(&text, "\n\n## $1\n\n").to_string();
-    }
-    if let Ok(re) = Regex::new(r"(?i)<h3[^>]*>([\s\S]*?)</h3>") {
-        text = re.replace_all(&text, "\n\n### $1\n\n").to_string();
-    }
-    if let Ok(re) = Regex::new(r"(?i)<h[4-6][^>]*>([\s\S]*?)</h[4-6]>") {
-        text = re.replace_all(&text, "\n\n#### $1\n\n").to_string();
-    }
+    text = H1_REGEX.replace_all(&text, "\n\n# $1\n\n").to_string();
+    text = H2_REGEX.replace_all(&text, "\n\n## $1\n\n").to_string();
+    text = H3_REGEX.replace_all(&text, "\n\n### $1\n\n").to_string();
+    text = H46_REGEX.replace_all(&text, "\n\n#### $1\n\n").to_string();
 
     // List items and paragraphs
-    if let Ok(re) = Regex::new(r"(?i)<li[^>]*>([\s\S]*?)</li>") {
-        text = re.replace_all(&text, "\n* $1").to_string();
-    }
-    if let Ok(re) = Regex::new(r"(?i)<p[^>]*>([\s\S]*?)</p>") {
-        text = re.replace_all(&text, "\n\n$1\n\n").to_string();
-    }
-    if let Ok(re) = Regex::new(r"(?i)<br\s*/?>") {
-        text = re.replace_all(&text, "\n").to_string();
-    }
-    if let Ok(re) = Regex::new(r"(?i)<hr\s*/?>") {
-        text = re.replace_all(&text, "\n---\n").to_string();
-    }
+    text = LI_REGEX.replace_all(&text, "\n* $1").to_string();
+    text = P_REGEX.replace_all(&text, "\n\n$1\n\n").to_string();
+    text = BR_REGEX.replace_all(&text, "\n").to_string();
+    text = HR_REGEX.replace_all(&text, "\n---\n").to_string();
 
     // Strip remaining HTML tags
-    if let Ok(re) = Regex::new(r"<[^>]+>") {
-        text = re.replace_all(&text, " ").to_string();
-    }
+    text = TAGS_REGEX.replace_all(&text, " ").to_string();
 
     // Decode HTML entities
     text = text
@@ -78,10 +84,9 @@ pub fn clean_html_to_markdown(html: &str) -> String {
         .replace("&ndash;", "–");
 
     // Normalize whitespace
-    let ws_re = Regex::new(r"[ \t]+").unwrap();
     let mut normalized_lines = Vec::new();
     for line in text.lines() {
-        let trimmed = ws_re.replace_all(line, " ").trim().to_string();
+        let trimmed = WS_REGEX.replace_all(line, " ").trim().to_string();
         if !trimmed.is_empty() {
             normalized_lines.push(trimmed);
         }

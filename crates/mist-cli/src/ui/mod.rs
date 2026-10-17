@@ -12,7 +12,7 @@ use crossterm::terminal::{
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use std::io::stdout;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot};
 
@@ -46,6 +46,7 @@ pub async fn run_tui(mut agent: CodestralAgent) -> Result<(), Box<dyn std::error
     let (reset_tx, mut reset_rx) = mpsc::channel::<()>(10);
 
     let history_count = Arc::new(AtomicUsize::new(agent.get_history().len()));
+    let is_loading_flag = Arc::new(AtomicBool::new(false));
 
     // 1. Hook up confirm callback to TUI modal
     let confirm_tx = event_tx.clone();
@@ -124,11 +125,15 @@ pub async fn run_tui(mut agent: CodestralAgent) -> Result<(), Box<dyn std::error
 
     // 5. Spawn 80ms animation tick timer
     let tick_tx = event_tx.clone();
+    let tick_loading = is_loading_flag.clone();
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(std::time::Duration::from_millis(80));
         loop {
             interval.tick().await;
-            if tick_tx.send(AppEvent::Tick).await.is_err() {
+            if tick_tx.is_closed() {
+                break;
+            }
+            if tick_loading.load(Ordering::Relaxed) && tick_tx.send(AppEvent::Tick).await.is_err() {
                 break;
             }
         }
@@ -154,6 +159,7 @@ pub async fn run_tui(mut agent: CodestralAgent) -> Result<(), Box<dyn std::error
                 AppEvent::TermEvent(Event::Key(key)) => {
                     let count = history_count.load(Ordering::Relaxed);
                     app.handle_key(key, &prompt_tx, &reset_tx, count);
+                    is_loading_flag.store(app.is_loading, Ordering::Relaxed);
                     needs_redraw = true;
                 }
                 AppEvent::TermEvent(Event::Resize(_, _)) => {
@@ -162,6 +168,7 @@ pub async fn run_tui(mut agent: CodestralAgent) -> Result<(), Box<dyn std::error
                 AppEvent::TermEvent(_) => {}
                 AppEvent::AgentResponse(res) => {
                     app.is_loading = false;
+                    is_loading_flag.store(false, Ordering::Relaxed);
                     match res {
                         Ok(reply) => app.add_message(MessageRole::Assistant, reply),
                         Err(err) => app.add_message(MessageRole::Error, err),

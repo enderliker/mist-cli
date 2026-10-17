@@ -32,11 +32,7 @@ pub fn is_path_inside(base_dir: &Path, target_path: &Path) -> bool {
             }
             curr = parent;
         }
-        let lexical_rel = pathdiff::diff_paths(&target_resolved, &base_canonical);
-        match lexical_rel {
-            Some(r) => !r.starts_with("..") && !r.is_absolute(),
-            None => false,
-        }
+        false
     }
 }
 
@@ -74,51 +70,3 @@ pub fn is_sensitive_file(file_path: &str, workspace_dir: &Path) -> bool {
     false
 }
 
-mod pathdiff {
-    use std::path::{Component, Path, PathBuf};
-
-    pub fn diff_paths<P, B>(path: P, base: B) -> Option<PathBuf>
-    where
-        P: AsRef<Path>,
-        B: AsRef<Path>,
-    {
-        let path = path.as_ref();
-        let base = base.as_ref();
-
-        if path.is_absolute() != base.is_absolute() {
-            if path.is_absolute() {
-                Some(PathBuf::from(path))
-            } else {
-                None
-            }
-        } else {
-            let mut ita = path.components();
-            let mut itb = base.components();
-            let mut comps: Vec<Component> = vec![];
-            loop {
-                match (ita.next(), itb.next()) {
-                    (None, None) => break,
-                    (Some(a), None) => {
-                        comps.push(a);
-                        comps.extend(ita.by_ref());
-                        break;
-                    }
-                    (None, _) => comps.push(Component::ParentDir),
-                    (Some(a), Some(b)) if comps.is_empty() && a == b => (),
-                    (Some(a), Some(Component::CurDir)) => comps.push(a),
-                    (Some(_), Some(Component::ParentDir)) => return None,
-                    (Some(a), Some(_)) => {
-                        comps.push(Component::ParentDir);
-                        for _ in itb {
-                            comps.push(Component::ParentDir);
-                        }
-                        comps.push(a);
-                        comps.extend(ita.by_ref());
-                        break;
-                    }
-                }
-            }
-            Some(comps.iter().map(|c| c.as_os_str()).collect())
-        }
-    }
-}

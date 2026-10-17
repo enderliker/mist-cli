@@ -248,6 +248,31 @@ impl CodestralAgent {
             return Ok(final_content);
         }
 
+        // Make a final completion call with tool_choice: None so the model can synthesize all tool results
+        let final_request = ChatCompletionRequest {
+            model: self.config.model.clone(),
+            messages: self.messages.clone(),
+            tools: None,
+            tool_choice: Some(ToolChoice::None),
+            temperature: None,
+            top_p: None,
+            max_tokens: None,
+            stream: None,
+            random_seed: None,
+        };
+
+        if let Ok(response) = self.client.chat().complete(&final_request).await {
+            if let Some(choice) = response.choices.into_iter().next() {
+                if let Some(content) = choice.message.content {
+                    if !content.trim().is_empty() {
+                        self.messages.push(ChatMessage::assistant(&content));
+                        self.prune_history();
+                        return Ok(content);
+                    }
+                }
+            }
+        }
+
         let warning = format!(
             "[Notice] Reached maximum consecutive tool call iterations ({}).",
             self.max_iterations
