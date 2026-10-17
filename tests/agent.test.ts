@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { CodestralAgent } from "../src/agent.js";
+import { CodestralAgent, buildSystemPrompt } from "../src/agent.js";
 import { MistralCliConfig } from "../src/config.js";
 import fs from "node:fs";
 import path from "node:path";
@@ -30,9 +30,30 @@ describe("CodestralAgent", () => {
     const history = agent.getHistory();
     expect(history.length).toBe(1);
     expect(history[0].role).toBe("system");
+    expect(history[0].content).toContain("Environment & Runtime Context:");
+    expect(history[0].content).toContain(tempDir);
+    expect(history[0].content).toContain(process.platform);
 
     agent.clearHistory();
     expect(agent.getHistory().length).toBe(1);
+  });
+
+  it("builds dynamic system prompt with date, timezone, platform, and tools info", () => {
+    const fixedDate = new Date("2026-10-16T15:30:00Z");
+    const prompt = buildSystemPrompt({
+      workspaceDir: "/workspace/my-project",
+      now: fixedDate,
+    });
+
+    expect(prompt).toContain("Environment & Runtime Context:");
+    expect(prompt).toContain("Current Date & Time:");
+    expect(prompt).toContain("2026");
+    expect(prompt).toContain("ISO 8601 Timestamp: 2026-10-16T15:30:00.000Z");
+    expect(prompt).toContain("/workspace/my-project");
+    expect(prompt).toContain(process.platform);
+    expect(prompt).toContain(process.version);
+    expect(prompt).toContain("execute_command");
+    expect(prompt).toContain("allow_network: true");
   });
 
   it("responds directly when model triggers no tool calls", async () => {
