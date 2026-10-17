@@ -97,6 +97,27 @@ describe("web_search Tool", () => {
     expect(parsed.results[0].url).toBe("https://nodejs.org/en/blog/release/v22.0.0");
   });
 
+  it("defaults search_depth to advanced and includes include_domains in payload", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ query: "test", results: [] }),
+    });
+    globalThis.fetch = fetchSpy as any;
+
+    await executeWebSearch(
+      {
+        query: "discord.py",
+        include_domains: ["pypi.org", "github.com"],
+      },
+      "tvly-mock-key"
+    );
+
+    const sentBody = JSON.parse(fetchSpy.mock.calls[0][1].body);
+    expect(sentBody.search_depth).toBe("advanced");
+    expect(sentBody.include_domains).toEqual(["pypi.org", "github.com"]);
+  });
+
   it("handles HTTP error status gracefully without throwing", async () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: false,

@@ -7,6 +7,7 @@ export interface WebSearchArgs {
   max_results?: number;
   search_depth?: "basic" | "advanced";
   include_answer?: boolean;
+  include_domains?: string[];
 }
 
 export interface TavilySearchResultItem {
@@ -27,7 +28,7 @@ export const webSearchToolDefinition: MistralTool = {
   function: {
     name: "web_search",
     description:
-      "Search the live web for up-to-date documentation, real-time facts, APIs, and articles via Tavily.",
+      "Search the live web for up-to-date documentation, real-time facts, APIs, package releases, and technical articles via Tavily.",
     parameters: {
       type: "object",
       properties: {
@@ -42,11 +43,20 @@ export const webSearchToolDefinition: MistralTool = {
         search_depth: {
           type: "string",
           enum: ["basic", "advanced"],
-          description: "Search depth: 'basic' for quick lookup or 'advanced' for deeper research.",
+          description:
+            "Search depth: 'advanced' (recommended default for accurate technical answers) or 'basic' (faster).",
         },
         include_answer: {
           type: "boolean",
           description: "Whether to include Tavily's direct synthesized answer to the query.",
+        },
+        include_domains: {
+          type: "array",
+          items: {
+            type: "string",
+          },
+          description:
+            "Optional list of domains to restrict search to (e.g., ['pypi.org', 'github.com', 'readthedocs.io']).",
         },
       },
       required: ["query"],
@@ -74,22 +84,31 @@ export async function executeWebSearch(
   }
 
   const maxResults = Math.min(Math.max(args.max_results ?? 5, 1), 10);
-  const searchDepth = args.search_depth === "advanced" ? "advanced" : "basic";
+  const searchDepth = args.search_depth === "basic" ? "basic" : "advanced";
   const includeAnswer = args.include_answer ?? true;
+  const includeDomains =
+    Array.isArray(args.include_domains) && args.include_domains.length > 0
+      ? args.include_domains
+      : undefined;
 
   try {
+    const payload: Record<string, unknown> = {
+      api_key: resolvedKey,
+      query,
+      search_depth: searchDepth,
+      include_answer: includeAnswer,
+      max_results: maxResults,
+    };
+    if (includeDomains) {
+      payload.include_domains = includeDomains;
+    }
+
     const response = await fetch(TAVILY_API_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        api_key: resolvedKey,
-        query,
-        search_depth: searchDepth,
-        include_answer: includeAnswer,
-        max_results: maxResults,
-      }),
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(15000),
     });
 
@@ -111,7 +130,7 @@ export async function executeWebSearch(
     const trimmedResults = (data.results || []).map((r) => ({
       title: r.title,
       url: r.url,
-      snippet: r.content?.length > 400 ? r.content.slice(0, 400) + "..." : r.content,
+      snippet: r.content?.length > 1000 ? r.content.slice(0, 1000) + "..." : r.content,
       score: r.score,
     }));
 
